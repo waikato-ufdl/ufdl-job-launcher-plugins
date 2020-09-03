@@ -1,1 +1,1 @@
-Plugins for the ufdl-job-launcher framework.
+Plugins for the `ufdl-job-launcher <https://github.com/waikato-ufdl/ufdl-job-launcher>`__ framework.
