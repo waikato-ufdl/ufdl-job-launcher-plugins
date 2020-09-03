@@ -3,7 +3,7 @@ from ufdl.joblauncher import AbstractDockerJobExecutor
 from ufdl.pythonclient.functional.image_classification.dataset import download as dataset_download
 
 
-class ObjectDetectionTrain_MMDet_1_2(AbstractDockerJobExecutor):
+class ObjectDetectionTrain_MMDet_20200301(AbstractDockerJobExecutor):
     """
     For executing Tensorflow image classification jobs.
     """
@@ -17,7 +17,7 @@ class ObjectDetectionTrain_MMDet_1_2(AbstractDockerJobExecutor):
         :param config: the configuration to use
         :type config: configparser.ConfigParser
         """
-        super(ObjectDetectionTrain_MMDet_1_2, self).__init__(context, config)
+        super(ObjectDetectionTrain_MMDet_20200301, self).__init__(context, config)
 
     def _pre_run(self, template, job):
         """
