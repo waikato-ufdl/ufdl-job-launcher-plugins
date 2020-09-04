@@ -93,7 +93,7 @@ REPO="ufdl-job-launcher"
 check_repository
 
 echo
-echo "Press any key to start setup of 'venv' for UFDL job launcher (using $PYTHON)..."
+echo "Press any key to start setup of 'venv' for 'UFDL job-launcher-plugins' (using $PYTHON)..."
 read -s -n 1 key
 
 # delete old directory
