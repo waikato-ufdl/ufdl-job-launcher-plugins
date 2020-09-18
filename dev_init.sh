@@ -93,30 +93,30 @@ REPO="ufdl-job-launcher"
 check_repository
 
 echo
-echo "Press any key to start setup of 'venv' for 'UFDL job-launcher-plugins' (using $PYTHON)..."
+echo "Press any key to start setup of 'venv.dev' for 'UFDL job-launcher-plugins' (using $PYTHON)..."
 read -s -n 1 key
 
 # delete old directory
-if [ -d "./venv" ]
+if [ -d "./venv.dev" ]
 then
   echo "Removing old virtual environment..."
-  rm -rf ./venv
+  rm -rf ./venv.dev
 fi
 
 echo "Creating new virtual environment..."
-virtualenv -p /usr/bin/$PYTHON ./venv
+virtualenv -p /usr/bin/$PYTHON ./venv.dev
 
 echo "Installing dependencies..."
-./venv/bin/pip install --upgrade pip
-./venv/bin/pip install --upgrade setuptools
-./venv/bin/pip install Cython
-./venv/bin/pip install numpy
-./venv/bin/pip install tensorflow
-./venv/bin/pip install ../ufdl-json-messages
-./venv/bin/pip install ../ufdl-python-client
-./venv/bin/pip install wai.lazypip
-./venv/bin/pip install wai.annotations
-./venv/bin/pip install pika
-./venv/bin/pip install psutil
-./venv/bin/pip install pyyaml
-./venv/bin/pip install ../ufdl-job-launcher
+./venv.dev/bin/pip install --upgrade pip
+./venv.dev/bin/pip install --upgrade setuptools
+./venv.dev/bin/pip install Cython
+./venv.dev/bin/pip install numpy
+./venv.dev/bin/pip install tensorflow
+./venv.dev/bin/pip install ../ufdl-json-messages
+./venv.dev/bin/pip install ../ufdl-python-client
+./venv.dev/bin/pip install wai.lazypip
+./venv.dev/bin/pip install wai.annotations
+./venv.dev/bin/pip install psutil
+./venv.dev/bin/pip install pyyaml
+./venv.dev/bin/pip install ../ufdl-job-launcher
+./venv.dev/bin/pip install .
