@@ -145,6 +145,10 @@ class ObjectDetectionTrain_MMDet_20200301(AbstractDockerJobExecutor):
         self._compress_and_upload(
             pk, "mmdetlog", "json",
             glob(self.job_dir + "/output/*.log.json"),
-            self.job_dir + "/log.zip")
+            self.job_dir + "/log_json.zip")
+        self._compress_and_upload(
+            pk, "mmdetlogtxt", "txt",
+            glob(self.job_dir + "/output/*.log"),
+            self.job_dir + "/log_txt.zip")
 
         super()._post_run(template, job, pre_run_success, do_run_success, error)
