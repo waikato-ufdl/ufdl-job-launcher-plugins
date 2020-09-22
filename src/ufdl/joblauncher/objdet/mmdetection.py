@@ -50,7 +50,7 @@ class ObjectDetectionTrain_MMDet_20200301(AbstractDockerJobExecutor):
         options = self._input("data", job, template)["options"]
         self._log_msg("Downloading dataset:", pk, "-> options=", options, "->", data)
         with open(data, "wb") as zip_file:
-            for b in dataset_download(self.context, pk, annotations_args=options):
+            for b in dataset_download(self.context, pk, annotations_args=shlex.split(options)):
                 zip_file.write(b)
 
         # decompress dataset

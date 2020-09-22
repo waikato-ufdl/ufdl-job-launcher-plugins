@@ -48,7 +48,7 @@ class ImageClassificationTrain_TF_1_14(AbstractDockerJobExecutor):
         options = self._input("data", job, template)["options"]
         self._log_msg("Downloading dataset:", pk, "-> options='" + str(options) + "'", "->", data)
         with open(data, "wb") as zip_file:
-            for b in dataset_download(self.context, pk, annotations_args=options):
+            for b in dataset_download(self.context, pk, annotations_args=shlex.split(options)):
                 zip_file.write(b)
 
         # decompress dataset
@@ -208,7 +208,7 @@ class ImageClassificationPredict_TF_1_14(AbstractDockerJobExecutor):
         options = self._input("data", job, template)["options"]
         self._log_msg("Downloading dataset:", pk, "-> options='" + str(options) + "'", "->", data)
         with open(data, "wb") as zip_file:
-            for b in dataset_download(self.context, pk, annotations_args=options):
+            for b in dataset_download(self.context, pk, annotations_args=shlex.split(options)):
                 zip_file.write(b)
 
         # decompress dataset
