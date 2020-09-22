@@ -1,4 +1,5 @@
 from glob import glob
+import shlex
 from ufdl.joblauncher import AbstractDockerJobExecutor
 from ufdl.pythonclient.functional.image_classification.dataset import download as dataset_download
 
