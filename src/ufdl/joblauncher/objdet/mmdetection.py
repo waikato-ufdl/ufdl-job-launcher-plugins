@@ -94,7 +94,7 @@ class ObjectDetectionTrain_MMDet_20200301(AbstractDockerJobExecutor):
             labels = ["/data/train/labels.txt"]
         else:
             self._log_msg("Using labels from %s" % labels[0])
-            labels[0] = labels[len(self.job_dir):]
+            labels[0] = labels[0][len(self.job_dir):]
         self._run_image(
             image,
             docker_args=[
