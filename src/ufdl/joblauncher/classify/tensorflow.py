@@ -5,7 +5,6 @@ import os
 import shlex
 import traceback
 from ufdl.joblauncher import AbstractDockerJobExecutor, load_class
-from ufdl.pythonclient.functional.core.dataset import download as generic_download
 from ufdl.pythonclient.functional.image_classification.dataset import download as dataset_download
 from ufdl.pythonclient.functional.image_classification.dataset import add_categories, get_metadata, set_metadata
 from ufdl.pythonclient.functional.core.jobs.job import get_output
@@ -209,7 +208,7 @@ class ImageClassificationPredict_TF_1_14(AbstractDockerJobExecutor):
         options = self._input("data", job, template)["options"]
         self._log_msg("Downloading dataset:", pk, "-> options='" + str(options) + "'", "->", data)
         with open(data, "wb") as zip_file:
-            for b in generic_download(self.context, pk):
+            for b in dataset_download(self.context, pk, annotations_args=shlex.split(options)):
                 zip_file.write(b)
 
         # decompress dataset
