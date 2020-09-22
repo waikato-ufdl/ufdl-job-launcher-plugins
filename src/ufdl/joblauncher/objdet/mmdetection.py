@@ -82,6 +82,7 @@ class ObjectDetectionTrain_MMDet_20200301(AbstractDockerJobExecutor):
             self.job_dir + "/data" + ":/data",
             self.job_dir + "/output" + ":/output",
             self.cache_dir + ":/models",
+            # TODO /root/.cache ?
         ]
 
         # build model
@@ -130,7 +131,7 @@ class ObjectDetectionTrain_MMDet_20200301(AbstractDockerJobExecutor):
 
         # zip+upload training logs
         self._compress_and_upload(
-            pk, "log", "json",
+            pk, "mmdetlog", "json",
             glob(self.job_dir + "/output/*.log.json"),
             self.job_dir + "/log.zip")
 
