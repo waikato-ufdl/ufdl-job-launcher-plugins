@@ -81,15 +81,24 @@ class ObjectDetectionTrain_MMDet_20200301(AbstractDockerJobExecutor):
         volumes=[
             self.job_dir + "/data" + ":/data",
             self.job_dir + "/output" + ":/output",
-            self.cache_dir + ":/models",
-            # TODO /root/.cache ?
         ]
+        if self.use_current_user:
+            volumes.append(self.cache_dir + ":/.cache")
+        else:
+            volumes.append(self.cache_dir + ":/root/.cache")
 
         # build model
+        labels = glob(self.job_dir + "/**/labels.txt", recursive=True)
+        if len(labels) == 0:
+            self._log_msg("Failed to locate 'labels.txt' file?")
+            labels = ["/data/train/labels.txt"]
+        else:
+            self._log_msg("Using labels from %s" % labels[0])
+            labels[0] = labels[len(self.job_dir):]
         self._run_image(
             image,
             docker_args=[
-                "-e", "MMDET_CLASSES=/data/train/labels.txt",  # TODO
+                "-e", "MMDET_CLASSES=%s" % labels[0],
                 "-e", "MMDET_OUTPUT=/output/",
                 "-e", "MMDET_SETUP=/output/config.py",
                 "-e", "MMDET_DATA=/data"
@@ -120,12 +129,15 @@ class ObjectDetectionTrain_MMDet_20200301(AbstractDockerJobExecutor):
         pk = int(job['pk'])
 
         # zip+upload model (output_graph.pb and output_labels.txt)
+        labels = glob(self.job_dir + "/**/labels.txt", recursive=True)
+        if len(labels) == 0:
+            labels = [self.job_dir + "/data/train/labels.txt"]
         self._compress_and_upload(
             pk, "model", "mmdetmodel",
             [
                 self.job_dir + "/output/latest.pth",
                 self.job_dir + "/output/config.py",
-                self.job_dir + "/data/labels.txt"
+                labels[0]
             ],
             self.job_dir + "/model.zip")
 
