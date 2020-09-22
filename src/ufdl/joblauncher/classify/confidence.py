@@ -87,6 +87,7 @@ class Entropy(AbstractConfidenceScore):
             for l in label_scores:
                 score = label_scores[l]
                 result += score * math.log(score)
+            result *= -1
         except:
             result = float("NaN")
         return result
