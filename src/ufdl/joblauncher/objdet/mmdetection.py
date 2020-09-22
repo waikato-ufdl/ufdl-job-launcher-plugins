@@ -1,7 +1,7 @@
 from glob import glob
 import shlex
 from ufdl.joblauncher import AbstractDockerJobExecutor
-from ufdl.pythonclient.functional.object_detection.dataset import download as dataset_download
+from ufdl.pythonclient.functional.image_classification.dataset import download as dataset_download
 
 
 class ObjectDetectionTrain_MMDet_20200301(AbstractDockerJobExecutor):
