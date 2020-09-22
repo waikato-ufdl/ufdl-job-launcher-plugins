@@ -241,10 +241,14 @@ class ObjectDetectionPredict_MMDet_20200301(AbstractDockerJobExecutor):
             self.job_dir + "/prediction" + ":/prediction",
             self.job_dir + "/output" + ":/output",
         ]
+        docker_args = [
+            "-e", "MMDET_CLASSES=/output/labels.txt",
+        ]
 
         # build model
         self._run_image(
             image,
+            docker_args=docker_args,
             volumes=volumes,
             image_args=shlex.split(self._expand_template(job, template))
         )
