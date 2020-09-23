@@ -4,12 +4,11 @@ import json
 import os
 import shlex
 import traceback
-from ufdl.joblauncher import AbstractDockerJobExecutor, load_class
+from ufdl.joblauncher import AbstractDockerJobExecutor
 from ufdl.pythonclient.functional.object_detection.dataset import download as dataset_download
 from ufdl.pythonclient.functional.object_detection.dataset import get_metadata, set_metadata, set_annotations_for_image
 from ufdl.pythonclient.functional.core.jobs.job import get_output
 from ufdl.pythonclient.functional.core.models.pretrained_model import download as pretrainedmodel_download
-from ufdl.pythonclient.functional.core.models.pretrained_model import list as pretrainedmodel_list
 from ufdl.json.object_detection import Annotation
 
 
@@ -77,19 +76,11 @@ class ObjectDetectionTrain_YOLACTPP_20200211(AbstractDockerJobExecutor):
             labels_str = lf.readline()
 
         # download pretrained model and put it into weights dir
-        models = pretrainedmodel_list(self.context)
         model_name = 'resnet50-19c8e357'
         model_file = self.job_dir + "/weights/%s.pth" % model_name
-        model_downloaded = False
-        for model in models:
-            if model['name'] == model_name:
-                with open(model_file, "wb") as mf:
-                    for b in pretrainedmodel_download(self.context, model['pk']):
-                        mf.write(b)
-                model_downloaded = True
-                break
-        if not model_downloaded:
-            raise Exception("Failed to download pretrained model %s!" % model_name)
+        with open(model_file, "wb") as mf:
+            for b in pretrainedmodel_download(self.context, int(self._parameter('resnet50model', job, template)['value'])):
+                mf.write(b)
 
         # replace parameters in template and save it to disk
         template_code = self._expand_template(job, template, bool_to_python=True)
@@ -157,6 +148,7 @@ class ObjectDetectionTrain_YOLACTPP_20200211(AbstractDockerJobExecutor):
         pk = int(job['pk'])
 
         # zip+upload model (output_graph.pb and output_labels.txt)
+        # TODO
         labels = glob(self.job_dir + "/**/labels.txt", recursive=True)
         if len(labels) == 0:
             labels = [self.job_dir + "/data/train/labels.txt"]
@@ -170,6 +162,7 @@ class ObjectDetectionTrain_YOLACTPP_20200211(AbstractDockerJobExecutor):
             self.job_dir + "/model.zip")
 
         # zip+upload training logs
+        # TODO
         self._compress_and_upload(
             pk, "mmdetlog", "json",
             glob(self.job_dir + "/output/*.log.json"),
@@ -240,6 +233,7 @@ class ObjectDetectionPredict_YOLACTPP_20200211(AbstractDockerJobExecutor):
                 zip_file.write(b)
 
         # decompress model
+        # TODO
         output_dir = self.job_dir + "/output"
         msg = self._decompress(model, output_dir)
         if msg is not None:
@@ -263,7 +257,7 @@ class ObjectDetectionPredict_YOLACTPP_20200211(AbstractDockerJobExecutor):
             self.job_dir + "/output" + ":/output",
         ]
         docker_args = [
-            "-e", "MMDET_CLASSES=/output/labels.txt",
+            "-e", "YOLACTPP_CONFIG=/output/config.py",
         ]
 
         # build model
