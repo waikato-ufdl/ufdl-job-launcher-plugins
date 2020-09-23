@@ -67,7 +67,7 @@ class ObjectDetectionTrain_MMDet_20200301(AbstractDockerJobExecutor):
             raise Exception("Failed to extract dataset pk=%d!\n%s" % (pk, msg))
 
         # replace parameters in template and save it to disk
-        template_code = self._expand_template(job, template)
+        template_code = self._expand_template(job, template, bool_to_python=True)
         template_file = self.job_dir + "/output/config.py"
         with open(template_file, "w") as tf:
             tf.write(template_code)

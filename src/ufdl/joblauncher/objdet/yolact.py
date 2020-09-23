@@ -74,7 +74,7 @@ class ObjectDetectionTrain_YOLACTPP_20200211(AbstractDockerJobExecutor):
             labels_str = lf.readline()
 
         # replace parameters in template and save it to disk
-        template_code = self._expand_template(job, template)
+        template_code = self._expand_template(job, template, bool_to_python=True)
         template_code = template_code.replace("${labels}", "'" + "','".join(labels_str.split(",")) + "'")
         template_code = template_code.replace("${num-labels}", str(len(labels_str.split(","))+1))
         template_file = self.job_dir + "/output/config.py"
