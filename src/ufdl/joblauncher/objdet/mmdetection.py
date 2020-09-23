@@ -50,7 +50,6 @@ class ObjectDetectionTrain_MMDet_20200301(AbstractDockerJobExecutor):
 
         # create directories
         self._mkdir(self.job_dir + "/output")
-        self._mkdir(self.job_dir + "/models")
 
         # download dataset
         data = self.job_dir + "/data.zip"
@@ -195,7 +194,6 @@ class ObjectDetectionPredict_MMDet_20200301(AbstractDockerJobExecutor):
         self._mkdir(self.job_dir + "/prediction")
         self._mkdir(self.job_dir + "/prediction/in")
         self._mkdir(self.job_dir + "/prediction/out")
-        self._mkdir(self.job_dir + "/models")
 
         # download dataset
         data = self.job_dir + "/data.zip"
