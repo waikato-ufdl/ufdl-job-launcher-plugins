@@ -284,17 +284,18 @@ class ObjectDetectionPredict_MMDet_20200301(AbstractDockerJobExecutor):
         if do_run_success and (self._parameter('store-predictions', job, template)['value'] == "true"):
             try:
                 for f in glob(self.job_dir + "/prediction/out/*"):
-                    if not f.endswith(".csv"):
+                    if f.endswith(".csv"):
                         continue
-                    img_name = os.path.basename(f).replace("-rois", "")
+                    img_name = os.path.basename(f)
                     # load CSV file and create annotations
                     annotations = []
                     scores = []
-                    with open(f, "r") as cf:
+                    csv_file = os.path.splitext(f)[0] + "-rois.csv"
+                    with open(csv_file, "r") as cf:
                         reader = csv.DictReader(cf)
                         for row in reader:
                             if ('x' in row) and ('y' in row) and ('w' in row) and ('h' in row) and ('label_str' in row) and ('score' in row):
-                                annotation = {}
+                                annotation = dict()
                                 annotation['x'] = int(float(row['x']))
                                 annotation['y'] = int(float(row['y']))
                                 annotation['width'] = int(float(row['w']))
