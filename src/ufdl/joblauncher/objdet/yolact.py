@@ -8,6 +8,8 @@ from ufdl.joblauncher import AbstractDockerJobExecutor, load_class
 from ufdl.pythonclient.functional.object_detection.dataset import download as dataset_download
 from ufdl.pythonclient.functional.object_detection.dataset import get_metadata, set_metadata, set_annotations_for_image
 from ufdl.pythonclient.functional.core.jobs.job import get_output
+from ufdl.pythonclient.functional.core.models.pretrained_model import download as pretrainedmodel_download
+from ufdl.pythonclient.functional.core.models.pretrained_model import list as pretrainedmodel_list
 from ufdl.json.object_detection import Annotation
 
 
@@ -50,6 +52,7 @@ class ObjectDetectionTrain_YOLACTPP_20200211(AbstractDockerJobExecutor):
 
         # create directories
         self._mkdir(self.job_dir + "/output")
+        self._mkdir(self.job_dir + "/weights")
 
         # download dataset
         data = self.job_dir + "/data.zip"
@@ -72,6 +75,21 @@ class ObjectDetectionTrain_YOLACTPP_20200211(AbstractDockerJobExecutor):
             raise Exception("Failed to locate 'labels.txt' file!")
         with open(labels[0], "r") as lf:
             labels_str = lf.readline()
+
+        # download pretrained model and put it into weights dir
+        models = pretrainedmodel_list(self.context)
+        model_name = 'resnet50-19c8e357'
+        model_file = self.job_dir + "/weights/%s.pth" % model_name
+        model_downloaded = False
+        for model in models:
+            if model['name'] == model_name:
+                with open(model_file, "wb") as mf:
+                    for b in pretrainedmodel_download(self.context, model['pk']):
+                        mf.write(b)
+                model_downloaded = True
+                break
+        if not model_downloaded:
+            raise Exception("Failed to download pretrained model %s!" % model_name)
 
         # replace parameters in template and save it to disk
         template_code = self._expand_template(job, template, bool_to_python=True)
