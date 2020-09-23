@@ -296,12 +296,12 @@ class ObjectDetectionPredict_MMDet_20200301(AbstractDockerJobExecutor):
                         reader = csv.DictReader(cf)
                         for row in reader:
                             if ('x' in row) and ('y' in row) and ('w' in row) and ('h' in row) and ('label_str' in row) and ('score' in row):
-                                annotation = Annotation()
-                                annotation.x = int(float(row['x']))
-                                annotation.y = int(float(row['y']))
-                                annotation.width = int(float(row['w']))
-                                annotation.height = int(float(row['h']))
-                                annotation.label = row['label_str']
+                                annotation = Annotation(
+                                    x=int(float(row['x'])),
+                                    y=int(float(row['y'])),
+                                    width=int(float(row['w'])),
+                                    height=int(float(row['h'])),
+                                    label=row['label_str'])
                                 if ('poly_x' in row) and ('poly_y' in row):
                                     # TODO
                                     pass
