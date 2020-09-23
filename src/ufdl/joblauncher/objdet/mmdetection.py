@@ -4,7 +4,7 @@ import json
 import os
 import shlex
 import traceback
-from ufdl.joblauncher import AbstractDockerJobExecutor, load_class
+from ufdl.joblauncher import AbstractDockerJobExecutor
 from ufdl.pythonclient.functional.object_detection.dataset import download as dataset_download
 from ufdl.pythonclient.functional.object_detection.dataset import get_metadata, set_metadata, set_annotations_for_image
 from ufdl.pythonclient.functional.core.jobs.job import get_output
