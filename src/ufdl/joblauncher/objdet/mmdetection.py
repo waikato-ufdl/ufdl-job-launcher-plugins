@@ -295,11 +295,11 @@ class ObjectDetectionPredict_MMDet_20200301(AbstractDockerJobExecutor):
                         for row in reader:
                             if ('x' in row) and ('y' in row) and ('w' in row) and ('h' in row) and ('label_str' in row) and ('score' in row):
                                 annotation = {}
-                                annotation['x'] = int(row['x'])
-                                annotation['y'] = int(row['y'])
-                                annotation['width'] = int(row['w'])
-                                annotation['height'] = int(row['h'])
-                                annotation['label'] = int(row['label_str'])
+                                annotation['x'] = int(float(row['x']))
+                                annotation['y'] = int(float(row['y']))
+                                annotation['width'] = int(float(row['w']))
+                                annotation['height'] = int(float(row['h']))
+                                annotation['label'] = row['label_str']
                                 if ('poly_x' in row) and ('poly_y' in row):
                                     # TODO
                                     pass
