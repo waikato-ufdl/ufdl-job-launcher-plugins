@@ -32,3 +32,8 @@ git+https://github.com/waikato-ufdl/ufdl-job-launcher-plugins.git
 ```
 
 Each time a job will get executed, it will pull in the latest version of this repository.
+
+
+## Scripts
+
+* `dev_init.sh` - sets up a development virtual environment, use `-h` for outputting the help screen
