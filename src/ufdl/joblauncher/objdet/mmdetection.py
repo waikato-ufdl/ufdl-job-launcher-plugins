@@ -8,6 +8,7 @@ from ufdl.joblauncher import AbstractDockerJobExecutor, load_class
 from ufdl.pythonclient.functional.object_detection.dataset import download as dataset_download
 from ufdl.pythonclient.functional.object_detection.dataset import get_metadata, set_metadata, set_annotations_for_image
 from ufdl.pythonclient.functional.core.jobs.job import get_output
+from ufdl.json.object_detection import Annotation
 
 
 class ObjectDetectionTrain_MMDet_20200301(AbstractDockerJobExecutor):
@@ -295,12 +296,12 @@ class ObjectDetectionPredict_MMDet_20200301(AbstractDockerJobExecutor):
                         reader = csv.DictReader(cf)
                         for row in reader:
                             if ('x' in row) and ('y' in row) and ('w' in row) and ('h' in row) and ('label_str' in row) and ('score' in row):
-                                annotation = dict()
-                                annotation['x'] = int(float(row['x']))
-                                annotation['y'] = int(float(row['y']))
-                                annotation['width'] = int(float(row['w']))
-                                annotation['height'] = int(float(row['h']))
-                                annotation['label'] = row['label_str']
+                                annotation = Annotation()
+                                annotation.x = int(float(row['x']))
+                                annotation.y = int(float(row['y']))
+                                annotation.width = int(float(row['w']))
+                                annotation.height = int(float(row['h']))
+                                annotation.label = row['label_str']
                                 if ('poly_x' in row) and ('poly_y' in row):
                                     # TODO
                                     pass
