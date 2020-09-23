@@ -113,8 +113,8 @@ class ObjectDetectionTrain_YOLACTPP_20200211(AbstractDockerJobExecutor):
             image_args=[
                 "yolactpp_train",
                 "--config=external_config",
-                "--log_folder=/output",
-                "--save_folder=/weights",
+                "--log_folder=/output/",
+                "--save_folder=/weights/",
                 "--validation_epoch=%s" % self._parameter('validation-epoch', job, template)['value'],
                 "--batch_size=%s" % self._parameter('batch-size', job, template)['value'],
             ]
