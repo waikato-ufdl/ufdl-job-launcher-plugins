@@ -100,9 +100,9 @@ class ObjectDetectionTrain_MMDet_20200301(AbstractDockerJobExecutor):
             self._log_msg("Failed to locate 'labels.txt' file?")
             labels = ["/data/train/labels.txt"]
         else:
+            self._log_file("Labels:", labels[0])
             self._log_msg("Using labels from %s" % labels[0])
             labels[0] = labels[0][len(self.job_dir):]
-            self._log_file("Labels:", labels[0])
         self._run_image(
             image,
             docker_args=[
