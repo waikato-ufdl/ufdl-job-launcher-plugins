@@ -72,6 +72,7 @@ class ObjectDetectionTrain_YOLACTPP_20200211(AbstractDockerJobExecutor):
         labels = glob(self.job_dir + "/**/labels.txt", recursive=True)
         if len(labels) == 0:
             raise Exception("Failed to locate 'labels.txt' file!")
+        self._log_file("Labels:", labels[0])
         with open(labels[0], "r") as lf:
             labels_str = lf.readline()
 
@@ -89,6 +90,7 @@ class ObjectDetectionTrain_YOLACTPP_20200211(AbstractDockerJobExecutor):
         template_file = self.job_dir + "/output/config.py"
         with open(template_file, "w") as tf:
             tf.write(template_code)
+        self._log_file("Template code:", template_file)
         return True
 
     def _do_run(self, template, job):

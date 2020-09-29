@@ -71,6 +71,7 @@ class ObjectDetectionTrain_MMDet_20200301(AbstractDockerJobExecutor):
         template_file = self.job_dir + "/output/config.py"
         with open(template_file, "w") as tf:
             tf.write(template_code)
+        self._log_file("Template code:", template_file)
         return True
 
     def _do_run(self, template, job):
@@ -101,6 +102,7 @@ class ObjectDetectionTrain_MMDet_20200301(AbstractDockerJobExecutor):
         else:
             self._log_msg("Using labels from %s" % labels[0])
             labels[0] = labels[0][len(self.job_dir):]
+            self._log_file("Labels:", labels[0])
         self._run_image(
             image,
             docker_args=[
