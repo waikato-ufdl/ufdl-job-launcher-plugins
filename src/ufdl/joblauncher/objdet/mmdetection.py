@@ -61,6 +61,12 @@ class ObjectDetectionTrain_MMDet_20200301(AbstractDockerJobExecutor):
             for b in dataset_download(self.context, pk, annotations_args=shlex.split(options)):
                 zip_file.write(b)
 
+        # decompress dataset
+        output_dir = self.job_dir + "/data"
+        msg = self._decompress(data, output_dir)
+        if msg is not None:
+            raise Exception("Failed to extract dataset pk=%d!\n%s" % (pk, msg))
+
         # download pretrained model
         try:
             pretrained = self._parameter('pretrained-model', job, template)['value']
@@ -73,15 +79,9 @@ class ObjectDetectionTrain_MMDet_20200301(AbstractDockerJobExecutor):
         if pretrained is not None:
             pretrained_model = self.job_dir + "/data/pretrained_model.pth"
             self._log_msg("Downloading pretrained model:", pk, "->", pretrained_model)
-            with open(data, "wb") as pmf:
+            with open(pretrained_model, "wb") as pmf:
                 for b in pretrainedmodel_download(self.context, pretrained):
                     pmf.write(b)
-
-        # decompress dataset
-        output_dir = self.job_dir + "/data"
-        msg = self._decompress(data, output_dir)
-        if msg is not None:
-            raise Exception("Failed to extract dataset pk=%d!\n%s" % (pk, msg))
 
         # replace parameters in template and save it to disk
         template_code = self._expand_template(job, template, bool_to_python=True)
