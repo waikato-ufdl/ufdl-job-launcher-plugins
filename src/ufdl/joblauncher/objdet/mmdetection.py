@@ -8,6 +8,7 @@ from ufdl.joblauncher import AbstractDockerJobExecutor
 from ufdl.pythonclient.functional.object_detection.dataset import download as dataset_download
 from ufdl.pythonclient.functional.object_detection.dataset import get_metadata, set_metadata, set_annotations_for_image
 from ufdl.pythonclient.functional.core.jobs.job import get_output
+from ufdl.pythonclient.functional.core.models.pretrained_model import download as pretrainedmodel_download
 from ufdl.json.object_detection import Annotation
 
 
@@ -59,6 +60,22 @@ class ObjectDetectionTrain_MMDet_20200301(AbstractDockerJobExecutor):
         with open(data, "wb") as zip_file:
             for b in dataset_download(self.context, pk, annotations_args=shlex.split(options)):
                 zip_file.write(b)
+
+        # download pretrained model
+        try:
+            pretrained = self._parameter('pretrained-model', job, template)['value']
+            pretrained = int(pretrained)
+        except:
+            # not all templates may specify that parameter, so we'll just ignore
+            # the "param not found" exception
+            pretrained = None
+
+        if pretrained is not None:
+            pretrained_model = self.job_dir + "/data/pretrained_model.pth"
+            self._log_msg("Downloading pretrained model:", pk, "->", pretrained_model)
+            with open(data, "wb") as pmf:
+                for b in pretrainedmodel_download(self.context, pretrained):
+                    pmf.write(b)
 
         # decompress dataset
         output_dir = self.job_dir + "/data"
@@ -155,7 +172,7 @@ class ObjectDetectionTrain_MMDet_20200301(AbstractDockerJobExecutor):
             glob(self.job_dir + "/output/*.log.json"),
             self.job_dir + "/log_json.zip")
         self._compress_and_upload(
-            pk, "mmdetlogtxt", "txt",
+            pk, "mmdetlog", "txt",
             glob(self.job_dir + "/output/*.log"),
             self.job_dir + "/log_txt.zip")
 
