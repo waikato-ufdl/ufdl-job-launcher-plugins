@@ -154,10 +154,12 @@ class ObjectDetectionTrain_YOLACTPP_20200211(AbstractDockerJobExecutor):
         if len(labels) == 0:
             labels = [self.job_dir + "/data/train/labels.txt"]
         models = glob(self.job_dir + "/weights/model*.pth")
-        latest = self.job_dir + "/output/no_model.pth"
+        latest = None
         for model in models:
-            if os.path.getctime(model) > os.path.getctime(latest):
+            if (latest is None) or (os.path.getctime(model) > os.path.getctime(latest)):
                 latest = model
+        if latest is None:
+            latest = self.job_dir + "/output/no_model_found.pth"
         self._compress_and_upload(
             pk, "model", "yolactppmodel",
             [
