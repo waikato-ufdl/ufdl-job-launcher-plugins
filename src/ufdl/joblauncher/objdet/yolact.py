@@ -155,7 +155,7 @@ class ObjectDetectionTrain_YOLACTPP_20200211(AbstractDockerJobExecutor):
         if len(labels) == 0:
             labels = [self.job_dir + "/data/train/labels.txt"]
         self._compress_and_upload(
-            pk, "model", "mmdetmodel",
+            pk, "model", "yolactppmodel",
             [
                 self.job_dir + "/output/latest.pth",
                 self.job_dir + "/output/config.py",
@@ -164,15 +164,10 @@ class ObjectDetectionTrain_YOLACTPP_20200211(AbstractDockerJobExecutor):
             self.job_dir + "/model.zip")
 
         # zip+upload training logs
-        # TODO
         self._compress_and_upload(
-            pk, "mmdetlog", "json",
-            glob(self.job_dir + "/output/*.log.json"),
-            self.job_dir + "/log_json.zip")
-        self._compress_and_upload(
-            pk, "mmdetlogtxt", "txt",
-            glob(self.job_dir + "/output/*.log"),
-            self.job_dir + "/log_txt.zip")
+            pk, "yolactpplog", "log",
+            glob(self.job_dir + "/output/model.log"),
+            self.job_dir + "/model_log.zip")
 
         super()._post_run(template, job, pre_run_success, do_run_success, error)
 
