@@ -236,11 +236,13 @@ class ObjectDetectionPredict_YOLACTPP_20200211(AbstractDockerJobExecutor):
                 zip_file.write(b)
 
         # decompress model
-        # TODO
         output_dir = self.job_dir + "/output"
         msg = self._decompress(model, output_dir)
         if msg is not None:
             raise Exception("Failed to extract model pk=%d!\n%s" % (pk, msg))
+        models = glob(output_dir + "/*.pth")
+        if len(models) > 0:
+            os.rename(models[0], output_dir + "/latest.pth")
 
         return True
 
