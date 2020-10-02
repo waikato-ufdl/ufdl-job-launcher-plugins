@@ -14,7 +14,7 @@ from ufdl.json.object_detection import Annotation
 
 class ObjectDetectionTrain_YOLACTPP_20200211(AbstractDockerJobExecutor):
     """
-    For executing Tensorflow image classification jobs.
+    For executing YOLACT++ object detection jobs.
     """
 
     def __init__(self, context, config):
@@ -174,7 +174,7 @@ class ObjectDetectionTrain_YOLACTPP_20200211(AbstractDockerJobExecutor):
 
 class ObjectDetectionPredict_YOLACTPP_20200211(AbstractDockerJobExecutor):
     """
-    For executing Tensorflow image classification prediction jobs.
+    For executing YOLACT++ object detection prediction jobs.
     """
 
     def __init__(self, context, config):
