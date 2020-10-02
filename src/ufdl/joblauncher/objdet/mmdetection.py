@@ -233,7 +233,7 @@ class ObjectDetectionPredict_MMDet_20200301(AbstractDockerJobExecutor):
         model = self.job_dir + "/model.zip"
         pk = self._pk_from_joboutput(self._input("model", job, template)["value"])
         with open(model, "wb") as zip_file:
-            for b in get_output(self.context, pk, "model"):
+            for b in get_output(self.context, pk, "model", "mmdetmodel"):
                 zip_file.write(b)
 
         # decompress model

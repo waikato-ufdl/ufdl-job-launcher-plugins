@@ -229,7 +229,7 @@ class ImageClassificationPredict_TF_1_14(AbstractDockerJobExecutor):
         model = self.job_dir + "/model.zip"
         pk = self._pk_from_joboutput(self._input("model", job, template)["value"])
         with open(model, "wb") as zip_file:
-            for b in get_output(self.context, pk, "model"):
+            for b in get_output(self.context, pk, "model", "tficmodel"):
                 zip_file.write(b)
 
         # decompress model
@@ -492,7 +492,7 @@ class ObjectDetectionTrain_TF_1_14(AbstractDockerJobExecutor):
         ]
         self._execute(cmd)
 
-        # zip+upload model
+        # zip+upload exported model
         path = self.job_dir + "/output/exported_graphs"
         labels = glob(self.job_dir + "/**/labels.txt", recursive=True)
         if len(labels) > 0:
@@ -565,7 +565,7 @@ class ObjectDetectionPredict_TF_1_14(AbstractDockerJobExecutor):
         model = self.job_dir + "/model.zip"
         pk = self._pk_from_joboutput(self._input("model", job, template)["value"])
         with open(model, "wb") as zip_file:
-            for b in get_output(self.context, pk, "model"):
+            for b in get_output(self.context, pk, "model", "tfodmodel"):
                 zip_file.write(b)
 
         # decompress model
@@ -592,14 +592,10 @@ class ObjectDetectionPredict_TF_1_14(AbstractDockerJobExecutor):
             self.job_dir + "/prediction" + ":/prediction",
             self.job_dir + "/output" + ":/output",
         ]
-        docker_args = [
-            "-e", "YOLACTPP_CONFIG=/output/config.py",
-        ]
 
         # build model
         self._run_image(
             image,
-            docker_args=docker_args,
             volumes=volumes,
             image_args=shlex.split(self._expand_template(job, template))
         )
