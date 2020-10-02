@@ -149,15 +149,19 @@ class ObjectDetectionTrain_YOLACTPP_20200211(AbstractDockerJobExecutor):
 
         pk = int(job['pk'])
 
-        # zip+upload model (output_graph.pb and output_labels.txt)
-        # TODO
+        # zip+upload model (latest model, config.py and labels.txt)
         labels = glob(self.job_dir + "/**/labels.txt", recursive=True)
         if len(labels) == 0:
             labels = [self.job_dir + "/data/train/labels.txt"]
+        models = glob(self.job_dir + "/weights/model*.pth")
+        latest = self.job_dir + "/output/no_model.pth"
+        for model in models:
+            if os.path.getctime(model) > os.path.getctime(latest):
+                latest = model
         self._compress_and_upload(
             pk, "model", "yolactppmodel",
             [
-                self.job_dir + "/output/latest.pth",
+                latest,
                 self.job_dir + "/output/config.py",
                 labels[0]
             ],
