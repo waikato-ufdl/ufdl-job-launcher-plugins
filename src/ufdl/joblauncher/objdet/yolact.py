@@ -80,7 +80,7 @@ class ObjectDetectionTrain_YOLACTPP_20200211(AbstractDockerJobExecutor):
         model_name = 'resnet50-19c8e357'
         model_file = self.job_dir + "/weights/%s.pth" % model_name
         with open(model_file, "wb") as mf:
-            for b in pretrainedmodel_download(self.context, int(self._parameter('resnet50model', job, template)['value'])):
+            for b in pretrainedmodel_download(self.context, int(self._parameter('pretrained-model', job, template)['value'])):
                 mf.write(b)
 
         # replace parameters in template and save it to disk
