@@ -54,7 +54,7 @@ def calculate_confidence_scores(executor, job_pk, dataset_pk, img_name, confiden
         for c in confidence_score_classes:
             conf_score_obj.append(load_class(c)())
     except:
-        executor._log_msg("Failed to instantiate confidence score classes: %s\n%s" % (str(confidence_score_classes), traceback.format_exc()))
+        executor.log_msg("Failed to instantiate confidence score classes: %s\n%s" % (str(confidence_score_classes), traceback.format_exc()))
 
     # calculate the scores
     if len(conf_score_obj) > 0:
@@ -72,4 +72,4 @@ def calculate_confidence_scores(executor, job_pk, dataset_pk, img_name, confiden
             metadata['confidence'] = conf_scores
             set_metadata(executor.context, dataset_pk, img_name, json.dumps(metadata))
         except:
-            executor._log_msg("Failed to add confidence scores of job %d for image %s in dataset %d!\n%s" % (job_pk, img_name, dataset_pk, traceback.format_exc()))
+            executor.log_msg("Failed to add confidence scores of job %d for image %s in dataset %d!\n%s" % (job_pk, img_name, dataset_pk, traceback.format_exc()))
