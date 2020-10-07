@@ -31,13 +31,21 @@ def read_rois(csv_file):
                     for x, y in zip(xs, ys):
                         p.append([int(float(x)), int(float(y))])
                     polygon = Polygon(points=p)
-                annotation = Annotation(
-                    x=int(float(row['x'])),
-                    y=int(float(row['y'])),
-                    width=int(float(row['w'])),
-                    height=int(float(row['h'])),
-                    label=row['label_str'],
-                    polygon=polygon)
+                if polygon is not None:
+                    annotation = Annotation(
+                        x=int(float(row['x'])),
+                        y=int(float(row['y'])),
+                        width=int(float(row['w'])),
+                        height=int(float(row['h'])),
+                        label=row['label_str'],
+                        polygon=polygon)
+                else:
+                    annotation = Annotation(
+                        x=int(float(row['x'])),
+                        y=int(float(row['y'])),
+                        width=int(float(row['w'])),
+                        height=int(float(row['h'])),
+                        label=row['label_str'])
                 annotations.append(annotation)
                 scores.append(float(row['score']))
 
