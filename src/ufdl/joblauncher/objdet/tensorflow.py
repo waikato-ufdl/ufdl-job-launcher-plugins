@@ -5,11 +5,9 @@ import shlex
 import shutil
 import tarfile
 import traceback
-from ufdl.joblauncher import AbstractDockerJobExecutor, load_class
+from ufdl.joblauncher import AbstractDockerJobExecutor
 from ufdl.pythonclient.functional.object_detection.dataset import download as od_dataset_download
-from ufdl.pythonclient.functional.object_detection.dataset import get_metadata as od_get_metadata
-from ufdl.pythonclient.functional.object_detection.dataset import set_metadata as od_set_metadata
-from ufdl.pythonclient.functional.object_detection.dataset import set_annotations_for_image as od_set_annotations_for_image
+from ufdl.pythonclient.functional.object_detection.dataset import clear as dataset_clear
 from ufdl.pythonclient.functional.core.models.pretrained_model import download as pretrainedmodel_download
 from ufdl.pythonclient.functional.core.jobs.job import get_output
 from .core import read_rois, calculate_confidence_scores, store_annotations, store_scores
@@ -215,9 +213,15 @@ class ObjectDetectionPredict_TF_1_14(AbstractDockerJobExecutor):
         self._mkdir(self.job_dir + "/prediction/in")
         self._mkdir(self.job_dir + "/prediction/out")
 
+        # dataset ID
+        pk = int(self._input("data", job, template)["value"])
+
+        # clear dataset
+        if self._parameter('clear-dataset', job, template)['value'] == "true":
+            dataset_clear(self.context, pk)
+
         # download dataset
         data = self.job_dir + "/data.zip"
-        pk = int(self._input("data", job, template)["value"])
         options = self._input("data", job, template)["options"]
         self.log_msg("Downloading dataset:", pk, "-> options='" + str(options) + "'", "->", data)
         with open(data, "wb") as zip_file:
@@ -238,7 +242,6 @@ class ObjectDetectionPredict_TF_1_14(AbstractDockerJobExecutor):
                 zip_file.write(b)
 
         # decompress model
-        # TODO
         output_dir = self.job_dir + "/output"
         msg = self._decompress(model, output_dir)
         if msg is not None:

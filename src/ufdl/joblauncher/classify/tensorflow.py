@@ -5,6 +5,7 @@ import shlex
 import traceback
 from ufdl.joblauncher import AbstractDockerJobExecutor
 from ufdl.pythonclient.functional.image_classification.dataset import download as dataset_download
+from ufdl.pythonclient.functional.image_classification.dataset import clear as dataset_clear
 from ufdl.pythonclient.functional.image_classification.dataset import add_categories
 from ufdl.pythonclient.functional.core.jobs.job import get_output
 from .core import calculate_confidence_scores, read_scores
@@ -200,9 +201,15 @@ class ImageClassificationPredict_TF_1_14(AbstractDockerJobExecutor):
         self._mkdir(self.job_dir + "/prediction/out")
         self._mkdir(self.job_dir + "/models")
 
+        # dataset ID
+        pk = int(self._input("data", job, template)["value"])
+
+        # clear dataset
+        if self._parameter('clear-dataset', job, template)['value'] == "true":
+            dataset_clear(self.context, pk)
+
         # download dataset
         data = self.job_dir + "/data.zip"
-        pk = int(self._input("data", job, template)["value"])
         options = self._input("data", job, template)["options"]
         self.log_msg("Downloading dataset:", pk, "-> options='" + str(options) + "'", "->", data)
         with open(data, "wb") as zip_file:
