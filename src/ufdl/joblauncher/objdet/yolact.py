@@ -1,4 +1,3 @@
-import csv
 from glob import glob
 import json
 import os
@@ -9,7 +8,7 @@ from ufdl.pythonclient.functional.object_detection.dataset import download as da
 from ufdl.pythonclient.functional.object_detection.dataset import get_metadata, set_metadata, set_annotations_for_image
 from ufdl.pythonclient.functional.core.jobs.job import get_output
 from ufdl.pythonclient.functional.core.models.pretrained_model import download as pretrainedmodel_download
-from ufdl.json.object_detection import Annotation
+from .core import rois_to_annotations
 
 
 class ObjectDetectionTrain_YOLACTPP_20200211(AbstractDockerJobExecutor):
@@ -308,25 +307,8 @@ class ObjectDetectionPredict_YOLACTPP_20200211(AbstractDockerJobExecutor):
                         continue
                     img_name = os.path.basename(f)
                     # load CSV file and create annotations
-                    annotations = []
-                    scores = []
                     csv_file = os.path.splitext(f)[0] + "-rois.csv"
-                    with open(csv_file, "r") as cf:
-                        reader = csv.DictReader(cf)
-                        for row in reader:
-                            if ('x' in row) and ('y' in row) and ('w' in row) and ('h' in row) and ('label_str' in row) and ('score' in row):
-                                annotation = Annotation(
-                                    x=int(float(row['x'])),
-                                    y=int(float(row['y'])),
-                                    width=int(float(row['w'])),
-                                    height=int(float(row['h'])),
-                                    label=row['label_str'])
-                                if ('poly_x' in row) and ('poly_y' in row):
-                                    # TODO
-                                    pass
-                                annotations.append(annotation)
-                                scores.append(float(row['score']))
-
+                    annotations, scores = rois_to_annotations(csv_file)
                     # set annotations for image
                     try:
                         set_annotations_for_image(self.context, dataset_pk, img_name, annotations)
