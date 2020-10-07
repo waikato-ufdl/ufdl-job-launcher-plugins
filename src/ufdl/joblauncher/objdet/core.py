@@ -1,15 +1,15 @@
 import csv
 import json
 import traceback
-from ufdl.json.object_detection import Annotation
+from ufdl.json.object_detection import Annotation, Polygon
 from ufdl.joblauncher import load_class
 from ufdl.joblauncher import AbstractJobExecutor
 from ufdl.pythonclient.functional.object_detection.dataset import get_metadata, set_metadata, set_annotations_for_image
 
 
-def rois_to_annotations(csv_file):
+def read_rois(csv_file):
     """
-    Loads the specified CSV file and generates a list of Annotation objects
+    Loads the specified ROIs CSV file and generates a list of Annotation objects
     and a list of scores from it.
 
     :param csvfile: the CSV file to read
@@ -23,15 +23,21 @@ def rois_to_annotations(csv_file):
         reader = csv.DictReader(cf)
         for row in reader:
             if ('x' in row) and ('y' in row) and ('w' in row) and ('h' in row) and ('label_str' in row) and ('score' in row):
+                polygon = None
+                if ('poly_x' in row) and ('poly_y' in row):
+                    xs = row['poly_x'].split(",")
+                    ys = row['poly_y'].split(",")
+                    p = []
+                    for x, y in zip(xs, ys):
+                        p.append([int(float(x)), int(float(y))])
+                    polygon = Polygon(points=p)
                 annotation = Annotation(
                     x=int(float(row['x'])),
                     y=int(float(row['y'])),
                     width=int(float(row['w'])),
                     height=int(float(row['h'])),
-                    label=row['label_str'])
-                if ('poly_x' in row) and ('poly_y' in row):
-                    # TODO
-                    pass
+                    label=row['label_str'],
+                    polygon=polygon)
                 annotations.append(annotation)
                 scores.append(float(row['score']))
 

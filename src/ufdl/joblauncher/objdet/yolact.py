@@ -8,7 +8,7 @@ from ufdl.pythonclient.functional.object_detection.dataset import download as da
 from ufdl.pythonclient.functional.object_detection.dataset import get_metadata, set_metadata, set_annotations_for_image
 from ufdl.pythonclient.functional.core.jobs.job import get_output
 from ufdl.pythonclient.functional.core.models.pretrained_model import download as pretrainedmodel_download
-from .core import rois_to_annotations, calculate_confidence_scores, store_annotations, store_scores
+from .core import read_rois, calculate_confidence_scores, store_annotations, store_scores
 
 
 class ObjectDetectionTrain_YOLACTPP_20200211(AbstractDockerJobExecutor):
@@ -308,7 +308,7 @@ class ObjectDetectionPredict_YOLACTPP_20200211(AbstractDockerJobExecutor):
                     img_name = os.path.basename(f)
                     # load CSV file and create annotations
                     csv_file = os.path.splitext(f)[0] + "-rois.csv"
-                    annotations, scores = rois_to_annotations(csv_file)
+                    annotations, scores = read_rois(csv_file)
                     # set annotations for image
                     store_annotations(self, job_pk, dataset_pk, img_name, annotations)
                     # set score in metadata
