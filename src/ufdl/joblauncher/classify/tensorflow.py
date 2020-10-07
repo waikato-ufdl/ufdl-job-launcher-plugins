@@ -322,7 +322,9 @@ class ImageClassificationPredict_TF_1_14(AbstractDockerJobExecutor):
                         try:
                             conf_scores = dict()
                             for c in conf_score_obj:
-                                conf_scores[c.name()] = c.calculate(label_scores)
+                                current = c.calculate(label_scores)
+                                for k in current:
+                                    conf_scores[k] = current[k]
                             metadata = get_metadata(self.context, dataset_pk, img_name)
                             if metadata == "":
                                 metadata = dict()

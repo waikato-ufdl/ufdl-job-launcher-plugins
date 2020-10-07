@@ -20,8 +20,8 @@ class AbstractConfidenceScore(object):
 
         :param label_scores: the dictionary with label-score relation.
         :type label_scores: dict
-        :return: the confidence score
-        :rtype: float
+        :return: the confidence score dictionary (name -> float)
+        :rtype: dict
         """
         raise NotImplementedError()
 
@@ -46,15 +46,15 @@ class TopScore(AbstractConfidenceScore):
 
         :param label_scores: the dictionary with label-score relation.
         :type label_scores: dict
-        :return: the confidence score
-        :rtype: float
+        :return: the confidence score dictionary (name -> float)
+        :rtype: dict
         """
         result = 0.0
         for l in label_scores:
             score = label_scores[l]
             if score > result:
                 result = score
-        return result
+        return {self.name(): result}
 
 
 class Entropy(AbstractConfidenceScore):
@@ -79,8 +79,8 @@ class Entropy(AbstractConfidenceScore):
 
         :param label_scores: the dictionary with label-score relation.
         :type label_scores: dict
-        :return: the confidence score
-        :rtype: float
+        :return: the confidence score dictionary (name -> float)
+        :rtype: dict
         """
         try:
             result = 0.0
@@ -90,5 +90,45 @@ class Entropy(AbstractConfidenceScore):
             result *= -1
         except:
             result = float("NaN")
-        return result
+        return {self.name(): result}
 
+
+class Common(AbstractConfidenceScore):
+    """
+    Combines common scores.
+    """
+
+    def name(self):
+        """
+        Returns the name of the confidence score.
+
+        :return: the name
+        :rtype: str
+        """
+        return "common"
+
+    def _add(self, all, current):
+        """
+        Adds the scores from "current" to "all".
+
+        :param all: the dictionary with all the combined scores
+        :type all: dict
+        :param current: the dictionary of scores to add
+        :type current: dict
+        """
+        for k in current:
+            all[k] = current[k]
+
+    def calculate(self, label_scores):
+        """
+        Returns the confidence score calculated from the label/score dictionary.
+
+        :param label_scores: the dictionary with label-score relation.
+        :type label_scores: dict
+        :return: the confidence score dictionary (name -> float)
+        :rtype: dict
+        """
+        result = dict()
+        self._add(result, TopScore().calculate(label_scores))
+        self._add(result, Entropy().calculate(label_scores))
+        return result
