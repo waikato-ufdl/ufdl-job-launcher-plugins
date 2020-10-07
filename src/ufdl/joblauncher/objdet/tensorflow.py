@@ -3,18 +3,23 @@ from glob import glob
 import json
 import os
 import shlex
+import shutil
+import tarfile
 import traceback
-from ufdl.joblauncher import AbstractDockerJobExecutor, load_class
-from ufdl.pythonclient.functional.image_classification.dataset import download as dataset_download
-from ufdl.pythonclient.functional.image_classification.dataset import add_categories
-from ufdl.pythonclient.functional.image_classification.dataset import get_metadata
-from ufdl.pythonclient.functional.image_classification.dataset import set_metadata
+from ufdl.joblauncher import AbstractDockerJobExecutor
+from ufdl.pythonclient.functional.object_detection.dataset import download as od_dataset_download
+from ufdl.pythonclient.functional.object_detection.dataset import get_metadata as od_get_metadata
+from ufdl.pythonclient.functional.object_detection.dataset import set_metadata as od_set_metadata
+from ufdl.pythonclient.functional.object_detection.dataset import set_annotations_for_image as od_set_annotations_for_image
+from ufdl.pythonclient.functional.core.models.pretrained_model import download as pretrainedmodel_download
 from ufdl.pythonclient.functional.core.jobs.job import get_output
+from ufdl.json.object_detection import Annotation
+from .core import rois_to_annotations
 
 
-class ImageClassificationTrain_TF_1_14(AbstractDockerJobExecutor):
+class ObjectDetectionTrain_TF_1_14(AbstractDockerJobExecutor):
     """
-    For executing Tensorflow image classification training jobs.
+    For executing Tensorflow object detection jobs.
     """
 
     def __init__(self, context, config):
@@ -26,7 +31,7 @@ class ImageClassificationTrain_TF_1_14(AbstractDockerJobExecutor):
         :param config: the configuration to use
         :type config: configparser.ConfigParser
         """
-        super(ImageClassificationTrain_TF_1_14, self).__init__(context, config)
+        super(ObjectDetectionTrain_TF_1_14, self).__init__(context, config)
 
     def _pre_run(self, template, job):
         """
@@ -42,13 +47,17 @@ class ImageClassificationTrain_TF_1_14(AbstractDockerJobExecutor):
         if not super()._pre_run(template, job):
             return False
 
+        # create directories
+        self._mkdir(self.job_dir + "/output")
+        self._mkdir(self.job_dir + "/models")
+
         # download dataset
         data = self.job_dir + "/data.zip"
         pk = int(self._input("data", job, template)["value"])
         options = self._input("data", job, template)["options"]
-        self._log_msg("Downloading dataset:", pk, "-> options='" + str(options) + "'", "->", data)
+        self._log_msg("Downloading dataset:", pk, "-> options=", options, "->", data)
         with open(data, "wb") as zip_file:
-            for b in dataset_download(self.context, pk, annotations_args=shlex.split(options)):
+            for b in od_dataset_download(self.context, pk, annotations_args=shlex.split(options)):
                 zip_file.write(b)
 
         # decompress dataset
@@ -57,9 +66,43 @@ class ImageClassificationTrain_TF_1_14(AbstractDockerJobExecutor):
         if msg is not None:
             raise Exception("Failed to extract dataset pk=%d!\n%s" % (pk, msg))
 
-        # create remaining directories
-        self._mkdir(self.job_dir + "/output")
-        self._mkdir(self.job_dir + "/models")
+        # determine number of classes
+        num_classes = 0
+        class_labels = []
+        labels = glob(self.job_dir + "/**/labels.txt", recursive=True)
+        if len(labels) > 0:
+            with open(labels[0]) as lf:
+                lines = lf.readlines()
+            for line in lines:
+                line = line.strip()
+                if line.startswith("name:"):
+                    num_classes += 1
+                    class_labels.append(line[5:].strip())
+        self._log_msg("%s labels: %s" % (str(num_classes), str(class_labels)))
+
+        # download pretrained model and put it into models dir
+        model_file = self.job_dir + "/models/pretrained.tar.gz"
+        with open(model_file, "wb") as mf:
+            for b in pretrainedmodel_download(self.context, int(self._parameter('pretrained-model', job, template)['value'])):
+                mf.write(b)
+        tar = tarfile.open(model_file)
+        tar.extractall()
+        tar.close()
+        # rename model dir to "pretrainedmodel"
+        path = self.job_dir + "/models"
+        for f in os.listdir(path):
+            d = os.path.join(path, f)
+            if os.path.isdir(d):
+                os.rename(d, os.path.join(self.job_dir, "models", "pretrainedmodel"))
+                break
+
+        # replace parameters in template and save it to disk
+        template_code = self._expand_template(job, template)
+        template_code = template_code.replace("${num-classes}", str(num_classes))
+        template_file = self.job_dir + "/output/pipeline.config"
+        with open(template_file, "w") as tf:
+            tf.write(template_code)
+        self._log_file("Template code:", template_file)
         return True
 
     def _do_run(self, template, job):
@@ -75,34 +118,22 @@ class ImageClassificationTrain_TF_1_14(AbstractDockerJobExecutor):
         image = self._docker_image['url']
         volumes=[
             self.job_dir + "/data" + ":/data",
+            self.job_dir + "/models" + ":/models",
             self.job_dir + "/output" + ":/output",
-            self.cache_dir + ":/models",
         ]
 
         # build model
-        res = self._run_image(
+        self._run_image(
             image,
             volumes=volumes,
-            image_args=shlex.split(self._expand_template(job, template))
+            image_args=[
+                "objdet_train",
+                "--pipeline_config_path=/output/pipeline.config",
+                "--model_dir=/output/",
+                "--num_train_steps=%s" %  self._parameter('num-train-steps', job, template)['value'],
+                "--sample_1_of_n_eval_examples=1",
+            ]
         )
-
-        # stats?
-        if (res is None) and (self._parameter("generate-stats", job, template)['value'] == "true"):
-            for t in ["training", "testing", "validation"]:
-                self._run_image(
-                    image,
-                    volumes=volumes,
-                    image_args=[
-                        "tfic-stats",
-                        "--image_dir", "/data",
-                        "--image_list", "/output/%s.json" % t,
-                        "--graph", "/output/graph.pb",
-                        "--info", "/output/info.json",
-                        "--output_preds", "/output/%s-predictions.csv" % t,
-                        "--output_stats", "/output/%s-stats.csv" % t,
-                    ]
-                )
-
 
     def _post_run(self, template, job, pre_run_success, do_run_success, error):
         """
@@ -120,55 +151,40 @@ class ImageClassificationTrain_TF_1_14(AbstractDockerJobExecutor):
         :type error: str
         """
 
-        job_pk = int(job['pk'])
+        pk = int(job['pk'])
 
-        # zip+upload model (output_graph.pb and output_labels.txt)
-        if do_run_success:
-            self._compress_and_upload(
-                job_pk, "model", "tficmodel",
-                [
-                    self.job_dir + "/output/graph.pb",
-                    self.job_dir + "/output/labels.txt",
-                    self.job_dir + "/output/info.json"
-                ],
-                self.job_dir + "/model.zip")
+        # export model
+        cmd = [
+            "objdet_export",
+            "--input_type image_tensor",
+            "--pipeline_config_path /output/pipeline.config",
+            "--trained_checkpoint_prefix /output/model.ckpt-%s" %  self._parameter('num-train-steps', job, template)['value'],
+            "--output_directory /output/exported_graphs"
+        ]
+        self._execute(cmd)
 
-        # zip+upload checkpoint (retrain_checkpoint.*)
-        if do_run_success:
-            self._compress_and_upload(
-                job_pk, "checkpoint", "tficcheckpoint",
-                glob(self.job_dir + "/output/retrain_checkpoint.*"),
-                self.job_dir + "/checkpoint.zip")
+        # zip+upload exported model
+        path = self.job_dir + "/output/exported_graphs"
+        labels = glob(self.job_dir + "/**/labels.txt", recursive=True)
+        if len(labels) > 0:
+            shutil.copyfile(labels[0], os.path.join(path, "labels.txt"))
+        zipfile = self.job_dir + "/model.zip"
+        self._compress(glob(path, recursive=True), zipfile, strip_path=path)
+        self._upload(pk, "model", "tfodmodel", zipfile)
 
-        # zip+upload train/val tensorboard (retrain_logs)
-        self._compress_and_upload(
-            job_pk, "log_train", "tensorboard",
-            glob(self.job_dir + "/output/retrain_logs/train/events*"),
-            self.job_dir + "/tensorboard_train.zip")
-        self._compress_and_upload(
-            job_pk, "log_validation", "tensorboard",
-            glob(self.job_dir + "/output/retrain_logs/validation/events*"),
-            self.job_dir + "/tensorboard_validation.zip")
-
-        # zip+upload train/test/val image list files (*.json)
-        self._compress_and_upload(
-            job_pk, "image_lists", "json",
-            glob(self.job_dir + "/output/*.json"),
-            self.job_dir + "/image_lists.zip")
-
-        # zip+upload predictions/stats
-        if do_run_success and (self._parameter("generate-stats", job, template)['value'] == "true"):
-            self._compress_and_upload(
-                job_pk, "statistics", "csv",
-                glob(self.job_dir + "/output/*.csv"),
-                self.job_dir + "/statistics.zip")
+        # zip+upload checkpoint
+        path = self.job_dir + "/output"
+        files = glob(path + "/model.ckpt-%s" % self._parameter('num-train-steps', job, template)['value'])
+        files.append(path + "/graph.pbtxt")
+        files.append(path + "/pipeline.config")
+        self._compress_and_upload(pk, "checkpoint", "tfodcheckpoint", files, self.job_dir + "/checkpoint.zip")
 
         super()._post_run(template, job, pre_run_success, do_run_success, error)
 
 
-class ImageClassificationPredict_TF_1_14(AbstractDockerJobExecutor):
+class ObjectDetectionPredict_TF_1_14(AbstractDockerJobExecutor):
     """
-    For executing Tensorflow image classification prediction jobs.
+    For executing Tensorflow object detection prediction jobs.
     """
 
     def __init__(self, context, config):
@@ -180,7 +196,7 @@ class ImageClassificationPredict_TF_1_14(AbstractDockerJobExecutor):
         :param config: the configuration to use
         :type config: configparser.ConfigParser
         """
-        super(ImageClassificationPredict_TF_1_14, self).__init__(context, config)
+        super(ObjectDetectionPredict_TF_1_14, self).__init__(context, config)
 
     def _pre_run(self, template, job):
         """
@@ -200,7 +216,6 @@ class ImageClassificationPredict_TF_1_14(AbstractDockerJobExecutor):
         self._mkdir(self.job_dir + "/prediction")
         self._mkdir(self.job_dir + "/prediction/in")
         self._mkdir(self.job_dir + "/prediction/out")
-        self._mkdir(self.job_dir + "/models")
 
         # download dataset
         data = self.job_dir + "/data.zip"
@@ -208,7 +223,7 @@ class ImageClassificationPredict_TF_1_14(AbstractDockerJobExecutor):
         options = self._input("data", job, template)["options"]
         self._log_msg("Downloading dataset:", pk, "-> options='" + str(options) + "'", "->", data)
         with open(data, "wb") as zip_file:
-            for b in dataset_download(self.context, pk, annotations_args=shlex.split(options)):
+            for b in od_dataset_download(self.context, pk, annotations_args=shlex.split(options)):
                 zip_file.write(b)
 
         # decompress dataset
@@ -221,10 +236,11 @@ class ImageClassificationPredict_TF_1_14(AbstractDockerJobExecutor):
         model = self.job_dir + "/model.zip"
         pk = self._pk_from_joboutput(self._input("model", job, template)["value"])
         with open(model, "wb") as zip_file:
-            for b in get_output(self.context, pk, "model", "tficmodel"):
+            for b in get_output(self.context, pk, "model", "tfodmodel"):
                 zip_file.write(b)
 
         # decompress model
+        # TODO
         output_dir = self.job_dir + "/output"
         msg = self._decompress(model, output_dir)
         if msg is not None:
@@ -284,54 +300,32 @@ class ImageClassificationPredict_TF_1_14(AbstractDockerJobExecutor):
 
         # post-process predictions
         if do_run_success and (self._parameter('store-predictions', job, template)['value'] == "true"):
-            conf_score_str = self._parameter('confidence-scores', job, template)['value'].split(";")
-            conf_score_obj = []
-            try:
-                for c in conf_score_str:
-                    conf_score_obj.append(load_class(c)())
-            except:
-                self._log_msg("Failed to instantiate confidence score classes: %s\n%s" % (conf_score_str, traceback.format_exc()))
-
             try:
                 for f in glob(self.job_dir + "/prediction/out/*"):
                     if f.endswith(".csv"):
                         continue
-                    # load CSV file and determine label with highest probability
-                    csv_file = os.path.splitext(f)[0] + ".csv"
-                    label = "?"
-                    prob = 0.0
-                    label_scores = dict()
-                    with open(csv_file, "r") as cf:
-                        reader = csv.DictReader(cf)
-                        for row in reader:
-                            if ('probability' in row) and ('label' in row):
-                                label_scores[row['label']] = float(row['probability'])
-                                if float(row['probability']) > prob:
-                                    prob = float(row['probability'])
-                                    label = row['label']
-
-                    # set category for file
+                    img_name = os.path.basename(f)
+                    # load CSV file and create annotations
+                    csv_file = os.path.splitext(f)[0] + "-rois.csv"
+                    annotations, scores = rois_to_annotations(csv_file)
+                    # set annotations for image
                     try:
-                        img_name = os.path.basename(f)
-                        add_categories(self.context, dataset_pk, [img_name], [label])
+                        od_set_annotations_for_image(self.context, dataset_pk, img_name, annotations)
                     except:
-                        self._log_msg("Failed to add labels generated by job %d to dataset %d!\n%s" % (job_pk, dataset_pk, traceback.format_exc()))
+                        self._log_msg("Failed to add annotations generated by job %d to dataset %d!\n%s" % (job_pk, dataset_pk, traceback.format_exc()))
 
-                    # calculate confidence scores
-                    if len(conf_score_obj) > 0:
-                        try:
-                            conf_scores = dict()
-                            for c in conf_score_obj:
-                                conf_scores[c.name()] = c.calculate(label_scores)
-                            metadata = get_metadata(self.context, dataset_pk, img_name)
-                            if metadata == "":
-                                metadata = dict()
-                            else:
-                                metadata = json.loads(metadata)
-                            metadata['confidence'] = conf_scores
-                            set_metadata(self.context, dataset_pk, img_name, json.dumps(metadata))
-                        except:
-                            self._log_msg("Failed to add confidence scores of job %d for image %s in dataset %d!\n%s" % (job_pk, img_name, dataset_pk, traceback.format_exc()))
+                    # set score in metadata
+                    try:
+                        metadata = od_get_metadata(self.context, dataset_pk, img_name)
+                        if metadata == "":
+                            metadata = dict()
+                        else:
+                            metadata = json.loads(metadata)
+                        metadata['scores'] = scores
+                        od_set_metadata(self.context, dataset_pk, img_name, json.dumps(metadata))
+                    except:
+                        self._log_msg("Failed to add scores of job %d for image %s in dataset %d!\n%s" % (job_pk, img_name, dataset_pk, traceback.format_exc()))
+
             except:
                 self._log_msg("Failed to post-process predictions generated by job %d for dataset %d!\n%s" % (job_pk, dataset_pk, traceback.format_exc()))
 
