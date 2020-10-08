@@ -390,6 +390,7 @@ class ObjectDetectionPredictPretrained_MMDet_20200301(AbstractDockerJobExecutor)
 
         # obtain classes
         pretrained_model_desc = pretrainedmodel_retrieve(self.context, pretrained)
+        print(pretrained_model_desc)
         labels_file = self.job_dir + "/output/labels.txt"
         self.log_msg("Extracting classes from pretrained model metadata...")
         if ("metadata" in pretrained_model_desc) and ("classes" in pretrained_model_desc["metadata"]):
