@@ -357,6 +357,7 @@ class ObjectDetectionPredictPretrained_MMDet_20200301(AbstractDockerJobExecutor)
             return False
 
         # create directories
+        self._mkdir(self.job_dir + "/output")
         self._mkdir(self.job_dir + "/prediction")
         self._mkdir(self.job_dir + "/prediction/in")
         self._mkdir(self.job_dir + "/prediction/out")
