@@ -147,34 +147,35 @@ class ObjectDetectionTrain_TF_1_14(AbstractDockerJobExecutor):
         :type error: str
         """
 
-        pk = int(job['pk'])
+        if do_run_success:
+            pk = int(job['pk'])
 
-        # export model
-        cmd = [
-            "objdet_export",
-            "--input_type image_tensor",
-            "--pipeline_config_path /output/pipeline.config",
-            "--trained_checkpoint_prefix /output/model.ckpt-%s" %  self._parameter('num-train-steps', job, template)['value'],
-            "--output_directory /output/exported_graphs"
-        ]
-        proc = self._execute(cmd)
+            # export model
+            cmd = [
+                "objdet_export",
+                "--input_type image_tensor",
+                "--pipeline_config_path /output/pipeline.config",
+                "--trained_checkpoint_prefix /output/model.ckpt-%s" %  self._parameter('num-train-steps', job, template)['value'],
+                "--output_directory /output/exported_graphs"
+            ]
+            proc = self._execute(cmd)
 
-        if proc.returncode == 0:
-            # zip+upload exported model
-            path = self.job_dir + "/output/exported_graphs"
-            labels = glob(self.job_dir + "/**/labels.pbtxt", recursive=True)
-            if len(labels) > 0:
-                shutil.copyfile(labels[0], os.path.join(path, "labels.pbtxt"))
-            zipfile = self.job_dir + "/model.zip"
-            self._compress(glob(path, recursive=True), zipfile, strip_path=path)
-            self._upload(pk, "model", "tfodmodel", zipfile)
+            if proc.returncode == 0:
+                # zip+upload exported model
+                path = self.job_dir + "/output/exported_graphs"
+                labels = glob(self.job_dir + "/**/labels.pbtxt", recursive=True)
+                if len(labels) > 0:
+                    shutil.copyfile(labels[0], os.path.join(path, "labels.pbtxt"))
+                zipfile = self.job_dir + "/model.zip"
+                self._compress(glob(path, recursive=True), zipfile, strip_path=path)
+                self._upload(pk, "model", "tfodmodel", zipfile)
 
-            # zip+upload checkpoint
-            path = self.job_dir + "/output"
-            files = glob(path + "/model.ckpt-%s" % self._parameter('num-train-steps', job, template)['value'])
-            files.append(path + "/graph.pbtxt")
-            files.append(path + "/pipeline.config")
-            self._compress_and_upload(pk, "checkpoint", "tfodcheckpoint", files, self.job_dir + "/checkpoint.zip")
+                # zip+upload checkpoint
+                path = self.job_dir + "/output"
+                files = glob(path + "/model.ckpt-%s" % self._parameter('num-train-steps', job, template)['value'])
+                files.append(path + "/graph.pbtxt")
+                files.append(path + "/pipeline.config")
+                self._compress_and_upload(pk, "checkpoint", "tfodcheckpoint", files, self.job_dir + "/checkpoint.zip")
 
         super()._post_run(template, job, pre_run_success, do_run_success, error)
 
