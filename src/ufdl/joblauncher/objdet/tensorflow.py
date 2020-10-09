@@ -65,7 +65,7 @@ class ObjectDetectionTrain_TF_1_14(AbstractDockerJobExecutor):
         # determine number of classes
         num_classes = 0
         class_labels = []
-        labels = glob(self.job_dir + "/**/labels.txt", recursive=True)
+        labels = glob(self.job_dir + "/**/labels.pbtxt", recursive=True)
         if len(labels) > 0:
             with open(labels[0]) as lf:
                 lines = lf.readlines()
@@ -161,9 +161,9 @@ class ObjectDetectionTrain_TF_1_14(AbstractDockerJobExecutor):
 
         # zip+upload exported model
         path = self.job_dir + "/output/exported_graphs"
-        labels = glob(self.job_dir + "/**/labels.txt", recursive=True)
+        labels = glob(self.job_dir + "/**/labels.pbtxt", recursive=True)
         if len(labels) > 0:
-            shutil.copyfile(labels[0], os.path.join(path, "labels.txt"))
+            shutil.copyfile(labels[0], os.path.join(path, "labels.pbtxt"))
         zipfile = self.job_dir + "/model.zip"
         self._compress(glob(path, recursive=True), zipfile, strip_path=path)
         self._upload(pk, "model", "tfodmodel", zipfile)
