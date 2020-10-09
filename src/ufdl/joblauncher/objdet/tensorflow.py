@@ -82,7 +82,7 @@ class ObjectDetectionTrain_TF_1_14(AbstractDockerJobExecutor):
             for b in pretrainedmodel_download(self.context, int(self._parameter('pretrained-model', job, template)['value'])):
                 mf.write(b)
         tar = tarfile.open(model_file)
-        tar.extractall()
+        tar.extractall(path=self.job_dir + "/models")
         tar.close()
         # rename model dir to "pretrainedmodel"
         path = self.job_dir + "/models"
