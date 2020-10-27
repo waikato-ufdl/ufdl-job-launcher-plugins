@@ -1,5 +1,6 @@
 import numpy as np
 from ufdl.json.object_detection import Annotation
+from ..utils import np_min, np_max, np_mean, np_median, np_std
 
 
 class AbstractConfidenceScore(object):
@@ -57,11 +58,11 @@ class ScoreDist(AbstractConfidenceScore):
         """
         result = dict()
         np_scores = np.array(scores)
-        result[self.name() + "-min"] = float(np.min(np_scores))
-        result[self.name() + "-max"] = float(np.max(np_scores))
-        result[self.name() + "-mean"] = float(np.mean(np_scores))
-        result[self.name() + "-median"] = float(np.median(np_scores))
-        result[self.name() + "-stdev"] = float(np.std(np_scores))
+        result[self.name() + "-min"] = np_min(np_scores)
+        result[self.name() + "-max"] = np_max(np_scores)
+        result[self.name() + "-mean"] = np_mean(np_scores)
+        result[self.name() + "-median"] = np_median(np_scores)
+        result[self.name() + "-stdev"] = np_std(np_scores)
         return result
 
 
@@ -91,11 +92,11 @@ class ObjectDims(AbstractConfidenceScore):
         :type values: list
         """
         np_values = np.array(values)
-        all[prefix + "-min"] = float(np.min(np_values))
-        all[prefix + "-max"] = float(np.max(np_values))
-        all[prefix + "-mean"] = float(np.mean(np_values))
-        all[prefix + "-median"] = float(np.median(np_values))
-        all[prefix + "-stdev"] = float(np.std(np_values))
+        all[prefix + "-min"] = np_min(np_values)
+        all[prefix + "-max"] = np_max(np_values)
+        all[prefix + "-mean"] = np_mean(np_values)
+        all[prefix + "-median"] = np_median(np_values)
+        all[prefix + "-stdev"] = np_std(np_values)
 
     def calculate(self, annotations, scores):
         """
