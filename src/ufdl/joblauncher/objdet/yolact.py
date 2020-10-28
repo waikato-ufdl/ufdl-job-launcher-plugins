@@ -270,12 +270,19 @@ class ObjectDetectionPredict_YOLACTPP_20200211(AbstractDockerJobExecutor):
             "-e", "YOLACTPP_CONFIG=/output/config.py",
         ]
 
-        # build model
+        # assemble commandline
+        cmdline = self._expand_template(job, template)
+        if self._is_true('generate-polygons', job, template):
+            cmdline += " --output_polygons"
+        if self._is_true('generate-mask-images', job, template):
+            cmdline += " --output_mask_image"
+
+        # use model
         self._run_image(
             image,
             docker_args=docker_args,
             volumes=volumes,
-            image_args=shlex.split(self._expand_template(job, template))
+            image_args=shlex.split(cmdline)
         )
 
 
@@ -300,10 +307,17 @@ class ObjectDetectionPredict_YOLACTPP_20200211(AbstractDockerJobExecutor):
 
         # zip+upload predictions
         if do_run_success:
-            self._compress_and_upload(
-                job_pk, "predictions", "csv",
-                glob(self.job_dir + "/prediction/out/*.csv"),
-                self.job_dir + "/predictions.zip")
+            if self._is_true('generate-mask-images', job, template):
+                self._compress_and_upload(
+                    job_pk, "predictions", "csv",
+                    glob(self.job_dir + "/prediction/out/*.csv"),
+                    glob(self.job_dir + "/prediction/out/*-mask.png"),
+                    self.job_dir + "/predictions.zip")
+            else:
+                self._compress_and_upload(
+                    job_pk, "predictions", "csv",
+                    glob(self.job_dir + "/prediction/out/*.csv"),
+                    self.job_dir + "/predictions.zip")
 
         # post-process predictions
         if do_run_success and (self._parameter('store-predictions', job, template)['value'] == "true"):
