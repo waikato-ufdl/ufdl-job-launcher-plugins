@@ -114,20 +114,22 @@ class ObjectDetectionTrain_YOLACTPP_20200211(AbstractDockerJobExecutor):
             volumes.append(self.cache_dir + ":/root/.cache")
 
         # build model
-        self._run_image(
-            image,
-            docker_args=[
-                "-e", "YOLACTPP_CONFIG=/output/config.py",
-            ],
-            volumes=volumes,
-            image_args=[
-                "yolactpp_train",
-                "--config=external_config",
-                "--log_folder=/output/",
-                "--save_folder=/weights/",
-                "--validation_epoch=%s" % self._parameter('validation-epoch', job, template)['value'],
-                "--batch_size=%s" % self._parameter('batch-size', job, template)['value'],
-            ]
+        self._fail_on_error(
+            self._run_image(
+                image,
+                docker_args=[
+                    "-e", "YOLACTPP_CONFIG=/output/config.py",
+                ],
+                volumes=volumes,
+                image_args=[
+                    "yolactpp_train",
+                    "--config=external_config",
+                    "--log_folder=/output/",
+                    "--save_folder=/weights/",
+                    "--validation_epoch=%s" % self._parameter('validation-epoch', job, template)['value'],
+                    "--batch_size=%s" % self._parameter('batch-size', job, template)['value'],
+                    ]
+            )
         )
 
     def _post_run(self, template, job, pre_run_success, do_run_success, error):
@@ -278,11 +280,13 @@ class ObjectDetectionPredict_YOLACTPP_20200211(AbstractDockerJobExecutor):
             cmdline += " --output_mask_image"
 
         # use model
-        self._run_image(
-            image,
-            docker_args=docker_args,
-            volumes=volumes,
-            image_args=shlex.split(cmdline)
+        self._fail_on_error(
+            self._run_image(
+                image,
+                docker_args=docker_args,
+                volumes=volumes,
+                image_args=shlex.split(cmdline)
+            )
         )
 
 

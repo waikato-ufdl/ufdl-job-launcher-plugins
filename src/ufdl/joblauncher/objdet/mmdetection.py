@@ -120,19 +120,21 @@ class ObjectDetectionTrain_MMDet_20200301(AbstractDockerJobExecutor):
             self.log_file("Labels:", labels[0])
             self.log_msg("Using labels from %s" % labels[0])
             labels[0] = labels[0][len(self.job_dir):]
-        self._run_image(
-            image,
-            docker_args=[
-                "-e", "MMDET_CLASSES=%s" % labels[0],
-                "-e", "MMDET_OUTPUT=/output/",
-                "-e", "MMDET_SETUP=/output/config.py",
-                "-e", "MMDET_DATA=/data"
-            ],
-            volumes=volumes,
-            image_args=[
-                "mmdet_train",
-                "/output/config.py",
-            ]
+        self._fail_on_error(
+            self._run_image(
+                image,
+                docker_args=[
+                    "-e", "MMDET_CLASSES=%s" % labels[0],
+                    "-e", "MMDET_OUTPUT=/output/",
+                    "-e", "MMDET_SETUP=/output/config.py",
+                    "-e", "MMDET_DATA=/data"
+                ],
+                volumes=volumes,
+                image_args=[
+                    "mmdet_train",
+                    "/output/config.py",
+                ]
+            )
         )
 
     def _post_run(self, template, job, pre_run_success, do_run_success, error):
@@ -275,11 +277,13 @@ class ObjectDetectionPredict_MMDet_20200301(AbstractDockerJobExecutor):
             cmdline += " --output_mask_image"
 
         # use model
-        self._run_image(
-            image,
-            docker_args=docker_args,
-            volumes=volumes,
-            image_args=shlex.split(cmdline)
+        self._fail_on_error(
+            self._run_image(
+                image,
+                docker_args=docker_args,
+                volumes=volumes,
+                image_args=shlex.split(cmdline)
+            )
         )
 
 

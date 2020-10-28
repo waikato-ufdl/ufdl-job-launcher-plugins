@@ -119,16 +119,18 @@ class ObjectDetectionTrain_TF_1_14(AbstractDockerJobExecutor):
         ]
 
         # build model
-        self._run_image(
-            image,
-            volumes=volumes,
-            image_args=[
-                "objdet_train",
-                "--pipeline_config_path=/output/pipeline.config",
-                "--model_dir=/output/",
-                "--num_train_steps=%s" %  self._parameter('num-train-steps', job, template)['value'],
-                "--sample_1_of_n_eval_examples=1",
-            ]
+        self._fail_on_error(
+            self._run_image(
+                image,
+                volumes=volumes,
+                image_args=[
+                    "objdet_train",
+                    "--pipeline_config_path=/output/pipeline.config",
+                    "--model_dir=/output/",
+                    "--num_train_steps=%s" %  self._parameter('num-train-steps', job, template)['value'],
+                    "--sample_1_of_n_eval_examples=1",
+                    ]
+            )
         )
 
     def _post_run(self, template, job, pre_run_success, do_run_success, error):
@@ -176,6 +178,8 @@ class ObjectDetectionTrain_TF_1_14(AbstractDockerJobExecutor):
                 files.append(path + "/graph.pbtxt")
                 files.append(path + "/pipeline.config")
                 self._compress_and_upload(pk, "checkpoint", "tfodcheckpoint", files, self.job_dir + "/checkpoint.zip")
+            else:
+                self._fail_on_error(proc)
 
         super()._post_run(template, job, pre_run_success, do_run_success, error)
 
@@ -275,10 +279,12 @@ class ObjectDetectionPredict_TF_1_14(AbstractDockerJobExecutor):
             cmdline += " --output_mask_image"
 
         # run model
-        self._run_image(
-            image,
-            volumes=volumes,
-            image_args=shlex.split(cmdline)
+        self._fail_on_error(
+            self._run_image(
+                image,
+                volumes=volumes,
+                image_args=shlex.split(cmdline)
+            )
         )
 
 
