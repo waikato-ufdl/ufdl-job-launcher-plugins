@@ -307,23 +307,21 @@ class ObjectDetectionPredict_YOLACTPP_20200211(AbstractDockerJobExecutor):
 
         # zip+upload predictions
         if do_run_success:
+            self._compress_and_upload(
+                job_pk, "predictions", "csv",
+                glob(self.job_dir + "/prediction/out/*.csv"),
+                self.job_dir + "/predictions.zip")
             if self._is_true('generate-mask-images', job, template):
                 self._compress_and_upload(
-                    job_pk, "predictions", "csv",
-                    glob(self.job_dir + "/prediction/out/*.csv"),
+                    job_pk, "predictions", "png",
                     glob(self.job_dir + "/prediction/out/*-mask.png"),
-                    self.job_dir + "/predictions.zip")
-            else:
-                self._compress_and_upload(
-                    job_pk, "predictions", "csv",
-                    glob(self.job_dir + "/prediction/out/*.csv"),
-                    self.job_dir + "/predictions.zip")
+                    self.job_dir + "/predictions_masks.zip")
 
         # post-process predictions
         if do_run_success and (self._parameter('store-predictions', job, template)['value'] == "true"):
             try:
                 for f in glob(self.job_dir + "/prediction/out/*"):
-                    if f.endswith(".csv"):
+                    if f.endswith(".csv") or f.endswith("-mask.png"):
                         continue
                     img_name = os.path.basename(f)
                     # load CSV file and create annotations
