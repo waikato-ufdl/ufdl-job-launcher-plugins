@@ -85,6 +85,8 @@ class ImageClassificationTrain_TF_1_14(AbstractDockerJobExecutor):
             image_args=shlex.split(self._expand_template(job, template))
         )
 
+        # TODO export tflite model (optional)
+
         # stats?
         if (res is None) and (self._parameter("generate-stats", job, template)['value'] == "true"):
             for t in ["training", "testing", "validation"]:
@@ -131,6 +133,10 @@ class ImageClassificationTrain_TF_1_14(AbstractDockerJobExecutor):
                     self.job_dir + "/output/info.json"
                 ],
                 self.job_dir + "/model.zip")
+
+        # TODO upload tflite model (optional)
+        if do_run_success:
+            pass
 
         # zip+upload checkpoint (retrain_checkpoint.*)
         if do_run_success:
