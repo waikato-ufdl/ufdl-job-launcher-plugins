@@ -3,7 +3,7 @@ from glob import glob
 import os
 import shlex
 import traceback
-from ufdl.joblauncher import AbstractDockerJobExecutor
+from ufdl.joblauncher.core import AbstractDockerJobExecutor
 from ufdl.pythonclient.functional.image_classification.dataset import download as dataset_download
 from ufdl.pythonclient.functional.image_classification.dataset import clear as dataset_clear
 from ufdl.pythonclient.functional.image_classification.dataset import add_categories

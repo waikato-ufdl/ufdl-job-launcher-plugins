@@ -1,8 +1,8 @@
 import csv
 import json
 import traceback
-from ufdl.joblauncher import load_class
-from ufdl.joblauncher import AbstractJobExecutor
+from ufdl.joblauncher.core import load_class
+from ufdl.joblauncher.core import AbstractJobExecutor
 from ufdl.pythonclient.functional.image_classification.dataset import get_metadata
 from ufdl.pythonclient.functional.image_classification.dataset import set_metadata
 

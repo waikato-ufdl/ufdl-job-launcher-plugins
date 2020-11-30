@@ -2,8 +2,8 @@ import csv
 import json
 import traceback
 from ufdl.json.object_detection import Annotation, Polygon
-from ufdl.joblauncher import load_class
-from ufdl.joblauncher import AbstractJobExecutor
+from ufdl.joblauncher.core import load_class
+from ufdl.joblauncher.core import AbstractJobExecutor
 from ufdl.pythonclient.functional.object_detection.dataset import get_metadata, set_metadata, set_annotations_for_image
 
 

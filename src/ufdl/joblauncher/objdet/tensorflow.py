@@ -5,7 +5,7 @@ import shlex
 import shutil
 import tarfile
 import traceback
-from ufdl.joblauncher import AbstractDockerJobExecutor
+from ufdl.joblauncher.core import AbstractDockerJobExecutor
 from ufdl.pythonclient.functional.object_detection.dataset import download as od_dataset_download
 from ufdl.pythonclient.functional.object_detection.dataset import clear as dataset_clear
 from ufdl.pythonclient.functional.core.models.pretrained_model import download as pretrainedmodel_download
