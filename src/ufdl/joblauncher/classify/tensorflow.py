@@ -3,11 +3,10 @@ from glob import glob
 import os
 import shlex
 import traceback
-from ufdl.joblauncher.core import AbstractDockerJobExecutor
+from ufdl.joblauncher.core import AbstractDockerJobExecutor, Input, JobOutput
 from ufdl.pythonclient.functional.image_classification.dataset import download as dataset_download
 from ufdl.pythonclient.functional.image_classification.dataset import clear as dataset_clear
 from ufdl.pythonclient.functional.image_classification.dataset import add_categories
-from ufdl.pythonclient.functional.core.jobs.job import get_output
 from .core import calculate_confidence_scores, read_scores
 
 
@@ -175,6 +174,10 @@ class ImageClassificationPredict_TF_1_14(AbstractDockerJobExecutor):
     """
     For executing Tensorflow image classification prediction jobs.
     """
+    # The model to use for prediction (must come from a job output)
+    model: JobOutput = Input({
+        "job_output<tficmodel>": JobOutput
+    })
 
     def __init__(self, context, config):
         """
@@ -230,9 +233,8 @@ class ImageClassificationPredict_TF_1_14(AbstractDockerJobExecutor):
 
         # download model
         model = self.job_dir + "/model.zip"
-        pk = self._pk_from_joboutput(self._input("model", job, template)["value"])
         with open(model, "wb") as zip_file:
-            for b in get_output(self.context, pk, "model", "tficmodel"):
+            for b in self.model.download():
                 zip_file.write(b)
 
         # decompress model
