@@ -70,7 +70,7 @@ class ImageClassificationTrain_TF_1_14(AbstractDockerJobExecutor):
         :type job: dict
         """
 
-        image = self._docker_image['url']
+        image = self.docker_image['url']
         volumes=[
             self.job_dir + "/data" + ":/data",
             self.job_dir + "/output" + ":/output",
@@ -255,7 +255,7 @@ class ImageClassificationPredict_TF_1_14(AbstractDockerJobExecutor):
         :type job: dict
         """
 
-        image = self._docker_image['url']
+        image = self.docker_image['url']
         volumes=[
             self.job_dir + "/prediction" + ":/prediction",
             self.job_dir + "/output" + ":/output",
