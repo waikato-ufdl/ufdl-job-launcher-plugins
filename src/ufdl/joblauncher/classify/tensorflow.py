@@ -70,12 +70,18 @@ class ImageClassificationTrain_TF_1_14(AbstractDockerJobExecutor):
         :type job: dict
         """
 
+        job_pk = int(job['pk'])
+
+        self._progress(job_pk, 0.25, comment="Getting Docker image...")
+
         image = self.docker_image['url']
         volumes=[
             self.job_dir + "/data" + ":/data",
             self.job_dir + "/output" + ":/output",
             self.cache_dir + ":/models",
         ]
+
+        self._progress(job_pk, 0.5, comment="Running Docker image...")
 
         # build model
         res = self._run_image(
@@ -88,6 +94,7 @@ class ImageClassificationTrain_TF_1_14(AbstractDockerJobExecutor):
 
         # stats?
         if (res is None) and (self._parameter("generate-stats", job, template)['value'] == "true"):
+            self._progress(job_pk, 0.75, comment="Generating stats...")
             for t in ["training", "testing", "validation"]:
                 self._run_image(
                     image,
@@ -103,6 +110,7 @@ class ImageClassificationTrain_TF_1_14(AbstractDockerJobExecutor):
                     ]
                 )
 
+        self._progress(job_pk, 1.0, comment="Done")
 
     def _post_run(self, template, job, pre_run_success, do_run_success, error):
         """
