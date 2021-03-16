@@ -10,6 +10,39 @@ from ufdl.pythonclient.functional.image_classification.dataset import add_catego
 from .core import calculate_confidence_scores, read_scores
 
 
+def imageclassifiation_tf_1_14_command_progress_parser(job_executor, job, cmd_output, last_progress):
+    """
+    Provides updates on the training process.
+
+    :param job_executor: the reference to the job executor calling this method
+    :type job_executor: AbstractJobExecutor
+    :param job: the current job
+    :type job: dict
+    :param cmd_output: the command output string to process
+    :type cmd_output: str
+    :param last_progress: the last reported progress (0-1)
+    :type last_progress: float
+    :return: returns the progress (0-1)
+    :rtype: float
+    """
+    steps = int(job['parameter_values']["steps"])
+    job_pk = int(job['pk'])
+    search_str = ": Step "
+    if search_str in cmd_output:
+        step = cmd_output[cmd_output.index(search_str) + len(search_str):]
+        if ":" in step:
+            step = step[:step.index(":")]
+        try:
+            step = int(step)
+            progress = step / steps * 0.7 + 0.2  # training the only represents 0.7 in the overall train job and starts 0.2
+            if progress != last_progress:
+                job_executor.progress(job_pk, progress)
+                return progress
+        except:
+            pass
+    return last_progress
+
+
 class ImageClassificationTrain_TF_1_14(AbstractDockerJobExecutor):
     """
     For executing Tensorflow image classification training jobs.
@@ -72,7 +105,7 @@ class ImageClassificationTrain_TF_1_14(AbstractDockerJobExecutor):
 
         job_pk = int(job['pk'])
 
-        self._progress(job_pk, 0.25, comment="Getting Docker image...")
+        self.progress(job_pk, 0.1, comment="Getting Docker image...")
 
         image = self.docker_image['url']
         volumes=[
@@ -81,20 +114,22 @@ class ImageClassificationTrain_TF_1_14(AbstractDockerJobExecutor):
             self.cache_dir + ":/models",
         ]
 
-        self._progress(job_pk, 0.5, comment="Running Docker image...")
+        self.progress(job_pk, 0.2, comment="Running Docker image...")
 
         # build model
         res = self._run_image(
             image,
             volumes=volumes,
-            image_args=shlex.split(self._expand_template(job, template))
+            image_args=shlex.split(self._expand_template(job, template)),
+            command_progress_parser=imageclassifiation_tf_1_14_command_progress_parser,
+            job=job
         )
 
         # TODO export tflite model (optional)
 
         # stats?
         if (res is None) and (self._parameter("generate-stats", job, template)['value'] == "true"):
-            self._progress(job_pk, 0.75, comment="Generating stats...")
+            self.progress(job_pk, 0.9, comment="Generating stats...")
             for t in ["training", "testing", "validation"]:
                 self._run_image(
                     image,
@@ -110,7 +145,7 @@ class ImageClassificationTrain_TF_1_14(AbstractDockerJobExecutor):
                     ]
                 )
 
-        self._progress(job_pk, 1.0, comment="Done")
+        self.progress(job_pk, 1.0, comment="Done")
 
     def _post_run(self, template, job, pre_run_success, do_run_success, error):
         """
