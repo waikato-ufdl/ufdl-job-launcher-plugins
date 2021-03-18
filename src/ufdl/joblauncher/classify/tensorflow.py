@@ -108,7 +108,7 @@ class ImageClassificationTrain_TF_1_14(AbstractDockerJobExecutor):
         self.progress(job_pk, 0.1, comment="Getting Docker image...")
 
         image = self.docker_image['url']
-        volumes=[
+        volumes = [
             self.job_dir + "/data" + ":/data",
             self.job_dir + "/output" + ":/output",
             self.cache_dir + ":/models",
@@ -125,25 +125,40 @@ class ImageClassificationTrain_TF_1_14(AbstractDockerJobExecutor):
             job=job
         )
 
-        # TODO export tflite model (optional)
-
-        # stats?
-        if (res is None) and (self._parameter("generate-stats", job, template)['value'] == "true"):
-            self.progress(job_pk, 0.9, comment="Generating stats...")
-            for t in ["training", "testing", "validation"]:
-                self._run_image(
+        # export tflite model
+        if not self.is_job_cancelled(job):
+            if res is None:
+                self.progress(job_pk, 0.9, comment="Exporting tflite model...")
+                res = self._run_image(
                     image,
                     volumes=volumes,
                     image_args=[
-                        "tfic-stats",
-                        "--image_dir", "/data",
-                        "--image_list", "/output/%s.json" % t,
-                        "--graph", "/output/graph.pb",
-                        "--info", "/output/info.json",
-                        "--output_preds", "/output/%s-predictions.csv" % t,
-                        "--output_stats", "/output/%s-stats.csv" % t,
-                    ]
+                        "tfic-export",
+                        "--saved_model_dir",
+                        "/output/saved_model",
+                        "--tflite_model",
+                        "/output/saved_model/model.tflite",
+                    ],
                 )
+
+        # stats?
+        if not self.is_job_cancelled(job):
+            if (res is None) and (self._parameter("generate-stats", job, template)['value'] == "true"):
+                self.progress(job_pk, 0.95, comment="Generating stats...")
+                for t in ["training", "testing", "validation"]:
+                    self._run_image(
+                        image,
+                        volumes=volumes,
+                        image_args=[
+                            "tfic-stats",
+                            "--image_dir", "/data",
+                            "--image_list", "/output/%s.json" % t,
+                            "--graph", "/output/graph.pb",
+                            "--info", "/output/info.json",
+                            "--output_preds", "/output/%s-predictions.csv" % t,
+                            "--output_stats", "/output/%s-stats.csv" % t,
+                        ]
+                    )
 
         self.progress(job_pk, 1.0, comment="Done")
 
@@ -176,9 +191,16 @@ class ImageClassificationTrain_TF_1_14(AbstractDockerJobExecutor):
                 ],
                 self.job_dir + "/model.zip")
 
-        # TODO upload tflite model (optional)
+        # upload tflite model
         if do_run_success:
-            pass
+            self._compress_and_upload(
+                job_pk, "modeltflite", "tficmodeltflite",
+                [
+                    self.job_dir + "/output/saved_model/model.tflite",
+                    self.job_dir + "/output/labels.txt",
+                    self.job_dir + "/output/info.json"
+                ],
+                self.job_dir + "/modeltflite.zip")
 
         # zip+upload checkpoint (retrain_checkpoint.*)
         if do_run_success:
