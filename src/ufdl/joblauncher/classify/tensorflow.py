@@ -241,7 +241,8 @@ class ImageClassificationPredict_TF_1_14(AbstractDockerJobExecutor):
     """
     # The model to use for prediction (must come from a job output)
     model: JobOutput = Input({
-        "job_output<tficmodel>": JobOutput
+        "job_output<tficmodel>": JobOutput,
+        "job_output<tficmodeltflite>": JobOutput
     })
 
     def __init__(self, context, config):
