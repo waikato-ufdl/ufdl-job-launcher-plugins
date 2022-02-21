@@ -41,5 +41,7 @@ setup(
         "ufdl.json-messages",
         "ufdl.joblauncher",
         "tensorflow",
+        "ufdl.jobtypes",
+        "ufdl.jobcontracts"
     ],
 )

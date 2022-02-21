@@ -1,86 +1,82 @@
-import csv
 from glob import glob
 import os
 import shlex
 import traceback
-from ufdl.joblauncher.core import AbstractDockerJobExecutor, Input, JobOutput
-from ufdl.pythonclient.functional.image_classification.dataset import download as dataset_download
-from ufdl.pythonclient.functional.image_classification.dataset import clear as dataset_clear
+from typing import Tuple
+
+from ufdl.jobcontracts.standard import Train, Predict
+
+from ufdl.joblauncher.core.executors import AbstractTrainJobExecutor, AbstractPredictJobExecutor
+from ufdl.joblauncher.core.executors.descriptors import Parameter, ExtraOutput
+from ufdl.joblauncher.core.executors.parsers import CommandProgressParser
+
+from ufdl.jobtypes.base import Integer, Boolean, String
+from ufdl.jobtypes.standard.container import Array
+from ufdl.jobtypes.standard.server import Domain, Framework
+from ufdl.jobtypes.standard.util import BLOB
+
 from ufdl.pythonclient.functional.image_classification.dataset import add_categories
+
+from ..utils import write_to_file
 from .core import calculate_confidence_scores, read_scores
 
 
-def imageclassifiation_tf_1_14_command_progress_parser(job_executor, job, cmd_output, last_progress):
-    """
-    Provides updates on the training process.
-
-    :param job_executor: the reference to the job executor calling this method
-    :type job_executor: AbstractJobExecutor
-    :param job: the current job
-    :type job: dict
-    :param cmd_output: the command output string to process
-    :type cmd_output: str
-    :param last_progress: the last reported progress (0-1)
-    :type last_progress: float
-    :return: returns the progress (0-1)
-    :rtype: float
-    """
-    steps = int(job['parameter_values']["steps"])
-    job_pk = int(job['pk'])
-    search_str = ": Step "
-    if search_str in cmd_output:
-        step = cmd_output[cmd_output.index(search_str) + len(search_str):]
-        if ":" in step:
-            step = step[:step.index(":")]
-        try:
-            step = int(step)
-            progress = step / steps * 0.7 + 0.2  # training the only represents 0.7 in the overall train job and starts 0.2
-            if progress != last_progress:
-                job_executor.progress(job_pk, progress)
-                return progress
-        except:
-            pass
-    return last_progress
+DOMAIN_TYPE = Domain("Image Classification")
+FRAMEWORK_TYPE = Framework("tensorflow", "1.14")
+IMAGE_CLASSIFICATION_TF_1_14_CONTRACT_TYPES = {'DomainType': DOMAIN_TYPE, 'FrameworkType': FRAMEWORK_TYPE}
 
 
-class ImageClassificationTrain_TF_1_14(AbstractDockerJobExecutor):
+class ImageClassificationTrain_TF_1_14(AbstractTrainJobExecutor):
     """
     For executing Tensorflow image classification training jobs.
     """
+    _cls_contract = Train(IMAGE_CLASSIFICATION_TF_1_14_CONTRACT_TYPES)
 
-    def __init__(self, context, config):
-        """
-        Initializes the executor with the backend context.
+    steps: int = Parameter(Integer())
+    generate_stats: bool = Parameter(Boolean())
 
-        :param context: the server context
-        :type context: UFDLServerContext
-        :param config: the configuration to use
-        :type config: configparser.ConfigParser
-        """
-        super(ImageClassificationTrain_TF_1_14, self).__init__(context, config)
+    modeltflite = ExtraOutput(BLOB("tficmodeltflite"))
+    checkpoint = ExtraOutput(BLOB("tficcheckpoint"))
+    log_train = ExtraOutput(BLOB("tensorboard"))
+    log_validation = ExtraOutput(BLOB("tensorboard"))
+    image_lists = ExtraOutput(BLOB("json"))
+    statistics = ExtraOutput(BLOB("csv"))
 
-    def _pre_run(self, template, job):
+    def create_command_progress_parser(self) -> CommandProgressParser:
+        steps = self.steps
+        search_str = ": Step "
+
+        def parser(cmd_output: str, last_progress: float) -> float:
+            if search_str in cmd_output:
+                step = cmd_output[cmd_output.index(search_str) + len(search_str):]
+                if ":" in step:
+                    step = step[:step.index(":")]
+                try:
+                    step = int(step)
+                    progress = step / steps * 0.7 + 0.2  # training the only represents 0.7 in the overall train job and starts 0.2
+                    if progress != last_progress:
+                        self.progress(progress)
+                        return progress
+                except:
+                    pass
+
+            return last_progress
+
+        return parser
+
+    def _pre_run(self):
         """
         Hook method before the actual job is run.
 
-        :param template: the job template to apply
-        :type template: dict
-        :param job: the job with the actual values for inputs and parameters
-        :type job: dict
         :return: whether successful
         :rtype: bool
         """
-        if not super()._pre_run(template, job):
+        if not super()._pre_run():
             return False
 
         # download dataset
-        data = self.job_dir + "/data.zip"
-        pk = int(self._input("data", job, template)["value"])
-        options = self._input("data", job, template)["options"]
-        self.log_msg("Downloading dataset:", pk, "-> options='" + str(options) + "'", "->", data)
-        with open(data, "wb") as zip_file:
-            for b in dataset_download(self.context, pk, annotations_args=shlex.split(options)):
-                zip_file.write(b)
+        pk: int = self[self.contract.dataset].pk
+        data = self._download_dataset(pk)
 
         # decompress dataset
         output_dir = self.job_dir + "/data"
@@ -93,19 +89,11 @@ class ImageClassificationTrain_TF_1_14(AbstractDockerJobExecutor):
         self._mkdir(self.job_dir + "/models")
         return True
 
-    def _do_run(self, template, job):
+    def _do_run(self):
         """
         Executes the actual job. Only gets run if pre-run was successful.
-
-        :param template: the job template to apply
-        :type template: dict
-        :param job: the job with the actual values for inputs and parameters
-        :type job: dict
         """
-
-        job_pk = int(job['pk'])
-
-        self.progress(job_pk, 0.1, comment="Getting Docker image...")
+        self.progress(0.1, comment="Getting Docker image...")
 
         image = self.docker_image['url']
         volumes = [
@@ -114,21 +102,21 @@ class ImageClassificationTrain_TF_1_14(AbstractDockerJobExecutor):
             self.cache_dir + ":/models",
         ]
 
-        self.progress(job_pk, 0.2, comment="Running Docker image...")
+        self.progress(0.2, comment="Running Docker image...")
 
         # build model
+        image_args = self._expand_template()
         res = self._run_image(
             image,
             volumes=volumes,
-            image_args=shlex.split(self._expand_template(job, template)),
-            command_progress_parser=imageclassifiation_tf_1_14_command_progress_parser,
-            job=job
+            image_args=shlex.split(image_args) if isinstance(image_args, str) else list(image_args),
+            command_progress_parser=self.create_command_progress_parser(),
         )
 
         # export tflite model
-        if not self.is_job_cancelled(job):
+        if not self.is_job_cancelled():
             if res is None:
-                self.progress(job_pk, 0.9, comment="Exporting tflite model...")
+                self.progress(0.9, comment="Exporting tflite model...")
                 res = self._run_image(
                     image,
                     volumes=volumes,
@@ -142,9 +130,9 @@ class ImageClassificationTrain_TF_1_14(AbstractDockerJobExecutor):
                 )
 
         # stats?
-        if not self.is_job_cancelled(job):
-            if (res is None) and (self._parameter("generate-stats", job, template)['value'] == "true"):
-                self.progress(job_pk, 0.95, comment="Generating stats...")
+        if not self.is_job_cancelled():
+            if (res is None) and self.generate_stats:
+                self.progress(0.95, comment="Generating stats...")
                 for t in ["training", "testing", "validation"]:
                     self._run_image(
                         image,
@@ -161,16 +149,12 @@ class ImageClassificationTrain_TF_1_14(AbstractDockerJobExecutor):
                         ]
                     )
 
-        self.progress(job_pk, 1.0, comment="Done")
+        self.progress(1.0, comment="Done")
 
-    def _post_run(self, template, job, pre_run_success, do_run_success, error):
+    def _post_run(self, pre_run_success, do_run_success, error):
         """
         Hook method after the actual job has been run. Will always be executed.
 
-        :param template: the job template that was applied
-        :type template: dict
-        :param job: the job with the actual values for inputs and parameters
-        :type job: dict
         :param pre_run_success: whether the pre_run code was successfully run
         :type pre_run_success: bool
         :param do_run_success: whether the do_run code was successfully run (only gets run if pre-run was successful)
@@ -178,24 +162,22 @@ class ImageClassificationTrain_TF_1_14(AbstractDockerJobExecutor):
         :param error: any error that may have occurred, None if none occurred
         :type error: str
         """
-
-        job_pk = int(job['pk'])
-
         # zip+upload model (output_graph.pb and output_labels.txt)
         if do_run_success:
             self._compress_and_upload(
-                job_pk, "model", "tficmodel",
+                self.contract.model,
                 [
                     self.job_dir + "/output/graph.pb",
                     self.job_dir + "/output/labels.txt",
                     self.job_dir + "/output/info.json"
                 ],
-                self.job_dir + "/model.zip")
+                self.job_dir + "/model.zip"
+            )
 
         # upload tflite model
         if do_run_success:
             self._compress_and_upload(
-                job_pk, "modeltflite", "tficmodeltflite",
+                self.modeltflite,
                 [
                     self.job_dir + "/output/saved_model/model.tflite",
                     self.job_dir + "/output/labels.txt",
@@ -206,69 +188,56 @@ class ImageClassificationTrain_TF_1_14(AbstractDockerJobExecutor):
         # zip+upload checkpoint (retrain_checkpoint.*)
         if do_run_success:
             self._compress_and_upload(
-                job_pk, "checkpoint", "tficcheckpoint",
+                self.checkpoint,
                 glob(self.job_dir + "/output/retrain_checkpoint.*"),
                 self.job_dir + "/checkpoint.zip")
 
         # zip+upload train/val tensorboard (retrain_logs)
         self._compress_and_upload(
-            job_pk, "log_train", "tensorboard",
+            self.log_train,
             glob(self.job_dir + "/output/retrain_logs/train/events*"),
             self.job_dir + "/tensorboard_train.zip")
         self._compress_and_upload(
-            job_pk, "log_validation", "tensorboard",
+            self.log_validation,
             glob(self.job_dir + "/output/retrain_logs/validation/events*"),
             self.job_dir + "/tensorboard_validation.zip")
 
         # zip+upload train/test/val image list files (*.json)
         self._compress_and_upload(
-            job_pk, "image_lists", "json",
+            self.image_lists,
             glob(self.job_dir + "/output/*.json"),
             self.job_dir + "/image_lists.zip")
 
         # zip+upload predictions/stats
-        if do_run_success and (self._parameter("generate-stats", job, template)['value'] == "true"):
+        if do_run_success and self.generate_stats:
             self._compress_and_upload(
-                job_pk, "statistics", "csv",
+                self.statistics,
                 glob(self.job_dir + "/output/*.csv"),
                 self.job_dir + "/statistics.zip")
 
-        super()._post_run(template, job, pre_run_success, do_run_success, error)
+        super()._post_run(pre_run_success, do_run_success, error)
 
 
-class ImageClassificationPredict_TF_1_14(AbstractDockerJobExecutor):
+class ImageClassificationPredict_TF_1_14(AbstractPredictJobExecutor):
     """
     For executing Tensorflow image classification prediction jobs.
     """
-    # The model to use for prediction (must come from a job output)
-    model: JobOutput = Input({
-        "job_output<tficmodel>": JobOutput,
-        "job_output<tficmodeltflite>": JobOutput
-    })
+    _cls_contract = Predict(IMAGE_CLASSIFICATION_TF_1_14_CONTRACT_TYPES)
 
-    def __init__(self, context, config):
-        """
-        Initializes the executor with the backend context.
+    store_predictions: bool = Parameter(Boolean())
+    confidence_scores: Tuple[str] = Parameter(Array(String()))
+    top_x: int = Parameter(Integer())
 
-        :param context: the server context
-        :type context: UFDLServerContext
-        :param config: the configuration to use
-        :type config: configparser.ConfigParser
-        """
-        super(ImageClassificationPredict_TF_1_14, self).__init__(context, config)
+    predictions = ExtraOutput(BLOB("csv"))
 
-    def _pre_run(self, template, job):
+    def _pre_run(self):
         """
         Hook method before the actual job is run.
 
-        :param template: the job template to apply
-        :type template: dict
-        :param job: the job with the actual values for inputs and parameters
-        :type job: dict
         :return: whether successful
         :rtype: bool
         """
-        if not super()._pre_run(template, job):
+        if not super()._pre_run():
             return False
 
         # create directories
@@ -278,19 +247,10 @@ class ImageClassificationPredict_TF_1_14(AbstractDockerJobExecutor):
         self._mkdir(self.job_dir + "/models")
 
         # dataset ID
-        pk = int(self._input("data", job, template)["value"])
-
-        # clear dataset
-        if self._parameter('clear-dataset', job, template)['value'] == "true":
-            dataset_clear(self.context, pk)
+        pk: int = self[self.contract.dataset].pk
 
         # download dataset
-        data = self.job_dir + "/data.zip"
-        options = self._input("data", job, template)["options"]
-        self.log_msg("Downloading dataset:", pk, "-> options='" + str(options) + "'", "->", data)
-        with open(data, "wb") as zip_file:
-            for b in dataset_download(self.context, pk, annotations_args=shlex.split(options)):
-                zip_file.write(b)
+        data = self._download_dataset(pk, self.clear_dataset)
 
         # decompress dataset
         output_dir = self.job_dir + "/prediction/in"
@@ -301,8 +261,7 @@ class ImageClassificationPredict_TF_1_14(AbstractDockerJobExecutor):
         # download model
         model = self.job_dir + "/model.zip"
         with open(model, "wb") as zip_file:
-            for b in self.model.download():
-                zip_file.write(b)
+            write_to_file(zip_file, self[self.contract.model])
 
         # decompress model
         output_dir = self.job_dir + "/output"
@@ -312,38 +271,29 @@ class ImageClassificationPredict_TF_1_14(AbstractDockerJobExecutor):
 
         return True
 
-    def _do_run(self, template, job):
+    def _do_run(self):
         """
         Executes the actual job. Only gets run if pre-run was successful.
-
-        :param template: the job template to apply
-        :type template: dict
-        :param job: the job with the actual values for inputs and parameters
-        :type job: dict
         """
 
-        image = self.docker_image['url']
-        volumes=[
+        image: str = self.docker_image['url']
+        volumes = [
             self.job_dir + "/prediction" + ":/prediction",
             self.job_dir + "/output" + ":/output",
         ]
 
         # build model
+        image_args = self._expand_template()
         self._run_image(
             image,
             volumes=volumes,
-            image_args=shlex.split(self._expand_template(job, template))
+            image_args=shlex.split(image_args) if isinstance(image_args, str) else list(image_args)
         )
 
-
-    def _post_run(self, template, job, pre_run_success, do_run_success, error):
+    def _post_run(self, pre_run_success, do_run_success, error):
         """
         Hook method after the actual job has been run. Will always be executed.
 
-        :param template: the job template that was applied
-        :type template: dict
-        :param job: the job with the actual values for inputs and parameters
-        :type job: dict
         :param pre_run_success: whether the pre_run code was successfully run
         :type pre_run_success: bool
         :param do_run_success: whether the do_run code was successfully run (only gets run if pre-run was successful)
@@ -351,19 +301,17 @@ class ImageClassificationPredict_TF_1_14(AbstractDockerJobExecutor):
         :param error: any error that may have occurred, None if none occurred
         :type error: str
         """
-
-        job_pk = int(job['pk'])
-        dataset_pk = int(self._input("data", job, template)["value"])
+        dataset_pk: int = self[self.contract.dataset].pk
 
         # zip+upload predictions
         if do_run_success:
             self._compress_and_upload(
-                job_pk, "predictions", "csv",
+                self.predictions,
                 glob(self.job_dir + "/prediction/out/*.csv"),
                 self.job_dir + "/predictions.zip")
 
         # post-process predictions
-        if do_run_success and (self._parameter('store-predictions', job, template)['value'] == "true"):
+        if do_run_success and self.store_predictions:
             try:
                 for f in glob(self.job_dir + "/prediction/out/*"):
                     if f.endswith(".csv"):
@@ -378,11 +326,11 @@ class ImageClassificationPredict_TF_1_14(AbstractDockerJobExecutor):
                     try:
                         add_categories(self.context, dataset_pk, [img_name], [label])
                     except:
-                        self.log_msg("Failed to add labels generated by job %d to dataset %d!\n%s" % (job_pk, dataset_pk, traceback.format_exc()))
+                        self.log_msg("Failed to add labels generated by job %d to dataset %d!\n%s" % (self.job_pk, dataset_pk, traceback.format_exc()))
 
                     # calculate confidence scores
-                    calculate_confidence_scores(self, job_pk, dataset_pk, img_name, self._parameter('confidence-scores', job, template)['value'].split(";"), label_scores)
+                    calculate_confidence_scores(self, dataset_pk, img_name, self.confidence_scores, label_scores)
             except:
-                self.log_msg("Failed to post-process predictions generated by job %d for dataset %d!\n%s" % (job_pk, dataset_pk, traceback.format_exc()))
+                self.log_msg("Failed to post-process predictions generated by job %d for dataset %d!\n%s" % (self.job_pk, dataset_pk, traceback.format_exc()))
 
-        super()._post_run(template, job, pre_run_success, do_run_success, error)
+        super()._post_run(pre_run_success, do_run_success, error)

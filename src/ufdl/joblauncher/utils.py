@@ -1,3 +1,5 @@
+from typing import IO, Union
+
 import numpy as np
 
 
@@ -84,3 +86,19 @@ def np_std(a):
         return float(np.std(a))
     except:
         return float("NaN")
+
+
+def write_to_file(file: IO[bytes], data: Union[bytes, IO[bytes]]):
+    """
+    Writes the given data to the given file.
+
+    :param file:
+                The file to write to.
+    :param data:
+                The data to write.
+    """
+    if isinstance(data, bytes):
+        file.write(data)
+    else:
+        for chunk in data:
+            file.write(chunk)
