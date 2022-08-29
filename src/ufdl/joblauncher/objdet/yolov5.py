@@ -57,6 +57,7 @@ class ObjectDetectionTrain_Yolo_v5(AbstractTrainJobExecutor):
         # create directories
         self._mkdir(self.job_dir + "/output")
         self._mkdir(self.job_dir + "/models")
+        self._mkdir(self.job_dir + "/data")
 
         # dataset ID
         pk: int = self.dataset.pk
@@ -214,7 +215,7 @@ class ObjectDetectionPredict_Yolo_v5(AbstractPredictJobExecutor):
 
         # download dataset
         # decompress dataset
-        output_dir = self.job_dir + "/data"
+        output_dir = self.job_dir + "/prediction/in"
         self._download_dataset(pk, output_dir)
 
         # download model
