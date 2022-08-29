@@ -58,15 +58,13 @@ class ObjectDetectionTrain_Yolo_v5(AbstractTrainJobExecutor):
         self._mkdir(self.job_dir + "/output")
         self._mkdir(self.job_dir + "/models")
 
-        # download dataset
-        pk: int = self[self.contract.dataset].pk
-        data = self._download_dataset(pk)
+        # dataset ID
+        pk: int = self.dataset.pk
 
+        # download dataset
         # decompress dataset
         output_dir = self.job_dir + "/data"
-        msg = self._decompress(data, output_dir)
-        if msg is not None:
-            raise Exception("Failed to extract dataset pk=%d!\n%s" % (pk, msg))
+        self._download_dataset(pk, output_dir)
 
         # determine number of classes
         num_classes = 0
