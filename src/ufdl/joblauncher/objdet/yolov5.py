@@ -4,7 +4,7 @@ import shlex
 import shutil
 import tarfile
 import traceback
-from typing import Tuple
+from typing import List, Tuple
 
 from ufdl.jobcontracts.standard import Train, Predict
 
@@ -68,29 +68,31 @@ class ObjectDetectionTrain_Yolo_v5(AbstractTrainJobExecutor):
         self._download_dataset(pk, output_dir)
 
         # determine number of classes
-        num_classes = 0
         class_labels = []
-        labels = glob(self.job_dir + "/**/labels.pbtxt", recursive=True)
-        if len(labels) > 0:
-            with open(labels[0]) as lf:
-                lines = lf.readlines()
-            for line in lines:
-                line = line.strip()
-                if line.startswith("name:"):
-                    num_classes += 1
-                    class_labels.append(line[5:].strip())
-        self.log_msg("%s labels: %s" % (str(num_classes), str(class_labels)))
+        with open(os.path.join(self.job_dir, "data", "labels.csv")) as lf:
+            lines = lf.readlines()
+        for line in lines[1:]:
+            index, label = line.strip().split(",", 1)
+            class_labels.append(label)
+        self.log_msg(f"{len(class_labels)} labels: {class_labels}")
 
-        return False
+        # Create the dataset YAML file
+        with open(os.path.join(self.job_dir, "data", "dataset.yaml")) as dataset_yaml_file:
+            dataset_yaml_file.write(
+                generate_dataset_yaml("/workspace/data", class_labels)
+            )
 
         # download pretrained model and put it into models dir
-        model_file = self.job_dir + "/models/pretrained.tar.gz"
+        model_file = self.job_dir + "/models/pretrained.pt"
         with open(model_file, "wb") as mf:
             for b in pretrainedmodel_download(self.context, self.pretrained_model.pk):
                 mf.write(b)
         tar = tarfile.open(model_file)
         tar.extractall(path=self.job_dir + "/models")
         tar.close()
+
+        return False
+
         # rename model dir to "pretrainedmodel"
         path = self.job_dir + "/models"
         for f in os.listdir(path):
@@ -309,3 +311,27 @@ class ObjectDetectionPredict_Yolo_v5(AbstractPredictJobExecutor):
                 )
 
         super()._post_run(pre_run_success, do_run_success, error)
+
+
+DATASET_YAML_TEMPLATE = """\
+# Train/val/test sets as 1) dir: path/to/imgs, 2) file: path/to/imgs.txt, or 3) list: [path/to/imgs1, path/to/imgs2, ..]
+path:  {path} # dataset root dir
+train: images/train  # train images (relative to 'path')
+val: images/val  # val images (relative to 'path')
+test: images/test # test images (optional)
+
+# Classes
+nc: {num_classes}  # number of classes
+names: {classes} # needs updating with actual order
+"""
+
+
+def generate_dataset_yaml(
+        path: str,
+        classes: List[str]
+) -> str:
+    return DATASET_YAML_TEMPLATE.format(
+        path=path,
+        num_classes=len(classes),
+        classes=classes
+    )
