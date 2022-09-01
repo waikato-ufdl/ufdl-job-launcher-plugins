@@ -87,9 +87,6 @@ class ObjectDetectionTrain_Yolo_v5(AbstractTrainJobExecutor):
         with open(model_file, "wb") as mf:
             for b in pretrainedmodel_download(self.context, self.pretrained_model.pk):
                 mf.write(b)
-        tar = tarfile.open(model_file)
-        tar.extractall(path=self.job_dir + "/models")
-        tar.close()
 
         return False
 
