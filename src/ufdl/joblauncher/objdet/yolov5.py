@@ -188,7 +188,7 @@ class ObjectDetectionPredict_Yolo_v5(AbstractPredictJobExecutor):
 
         # determine number of classes
         class_labels = []
-        with open(os.path.join(self.job_dir, "data", "labels.csv")) as lf:
+        with open(os.path.join(output_dir, "labels.csv")) as lf:
             lines = lf.readlines()
         for line in lines[1:]:
             index, label = line.strip().split(",", 1)
