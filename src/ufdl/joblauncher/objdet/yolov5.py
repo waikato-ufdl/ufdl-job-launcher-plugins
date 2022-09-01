@@ -152,13 +152,6 @@ class ObjectDetectionPredict_Yolo_v5(AbstractPredictJobExecutor):
     """
     _cls_contract = Predict(OBJECT_DETECTION_YOLO_V5_CONTRACT_TYPES)
 
-    generate_mask_images: bool = Parameter(Boolean())
-    store_predictions: bool = Parameter(Boolean())
-    confidence_scores: Tuple[str, ...] = Parameter(Array(String()))
-
-    predictions_csv = ExtraOutput(BLOB("csv"))
-    predictions_png = ExtraOutput(BLOB("png"))
-
     image_size: int = Parameter(
         Integer()
     )
