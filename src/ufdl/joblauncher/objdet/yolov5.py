@@ -2,7 +2,6 @@ from glob import glob
 import os
 import shlex
 import shutil
-import tarfile
 import traceback
 from typing import List, Tuple
 
@@ -38,7 +37,12 @@ class ObjectDetectionTrain_Yolo_v5(AbstractTrainJobExecutor):
         PK(PretrainedModel(DOMAIN_TYPE, FRAMEWORK_TYPE)),
         Name(PretrainedModel(DOMAIN_TYPE, FRAMEWORK_TYPE))
     )
+
     num_train_steps: int = Parameter(
+        Integer()
+    )
+
+    image_size: int = Parameter(
         Integer()
     )
 
@@ -76,34 +80,19 @@ class ObjectDetectionTrain_Yolo_v5(AbstractTrainJobExecutor):
             class_labels.append(label)
         self.log_msg(f"{len(class_labels)} labels: {class_labels}")
 
-        # Create the dataset YAML file
-        with open(os.path.join(self.job_dir, "data", "dataset.yaml"), "w") as dataset_yaml_file:
-            dataset_yaml_file.write(
-                generate_dataset_yaml("/workspace/data", class_labels)
-            )
-
         # download pretrained model and put it into models dir
         model_file = self.job_dir + "/models/pretrained.pt"
         with open(model_file, "wb") as mf:
             for b in pretrainedmodel_download(self.context, self.pretrained_model.pk):
                 mf.write(b)
 
-        return False
-
-        # rename model dir to "pretrainedmodel"
-        path = self.job_dir + "/models"
-        for f in os.listdir(path):
-            d = os.path.join(path, f)
-            if os.path.isdir(d):
-                os.rename(d, os.path.join(self.job_dir, "models", "pretrainedmodel"))
-                break
-
         # replace parameters in template and save it to disk
         template_code = self._expand_template()
         if not isinstance(template_code, str):
             template_code = "\n".join(template_code)
-        template_code = template_code.replace("${num-classes}", str(num_classes))
-        template_file = self.job_dir + "/output/pipeline.config"
+        template_code = template_code.replace("${num-classes}", str(len(class_labels)))
+        template_code = template_code.replace("${classes}", str(class_labels))
+        template_file = os.path.join(self.job_dir, "data", "dataset.yaml")
         with open(template_file, "w") as tf:
             tf.write(template_code)
         self.log_file("Template code:", template_file)
@@ -113,25 +102,24 @@ class ObjectDetectionTrain_Yolo_v5(AbstractTrainJobExecutor):
         """
         Executes the actual job. Only gets run if pre-run was successful.
         """
-
-        image = self._docker_image['url']
-        volumes = [
-            self.job_dir + "/data" + ":/data",
-            self.job_dir + "/models" + ":/models",
-            self.job_dir + "/output" + ":/output",
-            ]
-
         # build model
         self._fail_on_error(
             self._run_image(
-                image,
-                volumes=volumes,
+                self.docker_image.url,
+                volumes=[
+                    self.job_dir + "/data" + ":/data",
+                    self.job_dir + "/models" + ":/models",
+                    self.job_dir + "/output" + ":/output",
+                ],
                 image_args=[
-                    f"objdet_train",
-                    f"--pipeline_config_path=/output/pipeline.config",
-                    f"--model_dir=/output/",
-                    f"--num_train_steps={self.num_train_steps}",
-                    f"--sample_1_of_n_eval_examples=1",
+                    f"yolov5_train",
+                    f"--img={self.image_size}"
+                    f"--batch=16",
+                    f"--epochs=20"
+                    f"--data=/data/dataset.yaml"
+                    f"--weights=/models/pretrained.pt"
+                    f"--project=/output"
+                    f"--name=job-number-{self.job_pk}"
                 ]
             )
         )
@@ -308,27 +296,3 @@ class ObjectDetectionPredict_Yolo_v5(AbstractPredictJobExecutor):
                 )
 
         super()._post_run(pre_run_success, do_run_success, error)
-
-
-DATASET_YAML_TEMPLATE = """\
-# Train/val/test sets as 1) dir: path/to/imgs, 2) file: path/to/imgs.txt, or 3) list: [path/to/imgs1, path/to/imgs2, ..]
-path:  {path} # dataset root dir
-train: images/train  # train images (relative to 'path')
-val: images/val  # val images (relative to 'path')
-test: images/test # test images (optional)
-
-# Classes
-nc: {num_classes}  # number of classes
-names: {classes} # needs updating with actual order
-"""
-
-
-def generate_dataset_yaml(
-        path: str,
-        classes: List[str]
-) -> str:
-    return DATASET_YAML_TEMPLATE.format(
-        path=path,
-        num_classes=len(classes),
-        classes=classes
-    )
