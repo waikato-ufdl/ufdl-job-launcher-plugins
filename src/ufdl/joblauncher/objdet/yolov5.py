@@ -1,9 +1,7 @@
 from glob import glob
 import os
-import shlex
-import shutil
 import traceback
-from typing import List, Tuple
+from typing import Optional, Tuple
 
 from ufdl.jobcontracts.standard import Train, Predict
 
@@ -38,15 +36,9 @@ class ObjectDetectionTrain_Yolo_v5(AbstractTrainJobExecutor):
         Name(PretrainedModel(DOMAIN_TYPE, FRAMEWORK_TYPE))
     )
 
-    num_train_steps: int = Parameter(
-        Integer()
-    )
-
     image_size: int = Parameter(
         Integer()
     )
-
-    checkpoint = ExtraOutput(BLOB("tfodcheckpoint"))
 
     def _pre_run(self):
         """
@@ -96,6 +88,7 @@ class ObjectDetectionTrain_Yolo_v5(AbstractTrainJobExecutor):
         with open(template_file, "w") as tf:
             tf.write(template_code)
         self.log_file("Template code:", template_file)
+
         return True
 
     def _do_run(self):
@@ -124,45 +117,29 @@ class ObjectDetectionTrain_Yolo_v5(AbstractTrainJobExecutor):
             )
         )
 
-    def _post_run(self, pre_run_success, do_run_success, error):
-        """
-        Hook method after the actual job has been run. Will always be executed.
-
-        :param pre_run_success: whether the pre_run code was successfully run
-        :type pre_run_success: bool
-        :param do_run_success: whether the do_run code was successfully run (only gets run if pre-run was successful)
-        :type do_run_success: bool
-        :param error: any error that may have occurred, None if none occurred
-        :type error: str
-        """
+    def _post_run(
+            self,
+            pre_run_success: bool,
+            do_run_success: bool,
+            error: Optional[str]
+    ):
 
         if do_run_success:
             # export model
             cmd = [
-                f"objdet_export",
-                f"--input_type image_tensor",
-                f"--pipeline_config_path /output/pipeline.config",
-                f"--trained_checkpoint_prefix /output/model.ckpt-{self.num_train_steps}",
-                f"--output_directory /output/exported_graphs"
+                f"yolov5_export",
+                f"--weights=/output/job-number-{self.job_pk}/weights/best.pt",
+                f"--img-size", str(self.image_size), str(self.image_size),
+                f"--include onnx"
             ]
             proc = self._execute(cmd)
 
             if proc.returncode == 0:
                 # zip+upload exported model
-                path = self.job_dir + "/output/exported_graphs"
-                labels = glob(self.job_dir + "/**/labels.pbtxt", recursive=True)
-                if len(labels) > 0:
-                    shutil.copyfile(labels[0], os.path.join(path, "labels.pbtxt"))
+                path = self.job_dir + "/output/best.onnx"
                 zipfile = self.job_dir + "/model.zip"
-                self._compress(glob(path, recursive=True), zipfile, strip_path=path)
+                self._compress([path], zipfile, strip_path=path)
                 self._upload(self.contract.model, zipfile)
-
-                # zip+upload checkpoint
-                path = self.job_dir + "/output"
-                files = glob(f"{path}/model.ckpt-{self.num_train_steps}")
-                files.append(path + "/graph.pbtxt")
-                files.append(path + "/pipeline.config")
-                self._compress_and_upload(self.checkpoint, files, self.job_dir + "/checkpoint.zip")
             else:
                 self._fail_on_error(proc)
 
@@ -182,6 +159,10 @@ class ObjectDetectionPredict_Yolo_v5(AbstractPredictJobExecutor):
     predictions_csv = ExtraOutput(BLOB("csv"))
     predictions_png = ExtraOutput(BLOB("png"))
 
+    image_size: int = Parameter(
+        Integer()
+    )
+
     def _pre_run(self):
         """
         Hook method before the actual job is run.
@@ -196,6 +177,8 @@ class ObjectDetectionPredict_Yolo_v5(AbstractPredictJobExecutor):
         self._mkdir(self.job_dir + "/prediction")
         self._mkdir(self.job_dir + "/prediction/in")
         self._mkdir(self.job_dir + "/prediction/out")
+        self._mkdir(self.job_dir + "/data")
+        self._mkdir(self.job_dir + "/output")
 
         # dataset ID
         pk: int = self.dataset.pk
@@ -204,6 +187,15 @@ class ObjectDetectionPredict_Yolo_v5(AbstractPredictJobExecutor):
         # decompress dataset
         output_dir = self.job_dir + "/prediction/in"
         self._download_dataset(pk, output_dir)
+
+        # determine number of classes
+        class_labels = []
+        with open(os.path.join(self.job_dir, "data", "labels.csv")) as lf:
+            lines = lf.readlines()
+        for line in lines[1:]:
+            index, label = line.strip().split(",", 1)
+            class_labels.append(label)
+        self.log_msg(f"{len(class_labels)} labels: {class_labels}")
 
         # download model
         model = self.job_dir + "/model.zip"
@@ -216,27 +208,40 @@ class ObjectDetectionPredict_Yolo_v5(AbstractPredictJobExecutor):
         if msg is not None:
             raise Exception("Failed to extract model pk=%d!\n%s" % (pk, msg))
 
+        # replace parameters in template and save it to disk
+        template_code = self._expand_template()
+        if not isinstance(template_code, str):
+            template_code = "\n".join(template_code)
+        template_code = template_code.replace("${num-classes}", str(len(class_labels)))
+        template_code = template_code.replace("${classes}", str(class_labels))
+        template_file = os.path.join(self.job_dir, "data", "dataset.yaml")
+        with open(template_file, "w") as tf:
+            tf.write(template_code)
+        self.log_file("Template code:", template_file)
+
         return True
 
     def _do_run(self):
         """
         Executes the actual job. Only gets run if pre-run was successful.
         """
-        image = self._docker_image['url']
-        volumes = [
-            self.job_dir + "/prediction" + ":/prediction",
-            self.job_dir + "/output" + ":/output",
-            ]
-
-        # assemble commandline
-        cmdline = self._expand_template()
-
-        # run model
         self._fail_on_error(
             self._run_image(
-                image,
-                volumes=volumes,
-                image_args=shlex.split(cmdline) if isinstance(cmdline, str) else cmdline
+                self.docker_image.url,
+                volumes=[
+                    f"{self.job_dir}/data:/data",
+                    f"{self.job_dir}/models:/models",
+                    f"{self.job_dir}/output:/output",
+                    f"{self.job_dir}/prediction:/prediction"
+                ],
+                image_args=[
+                    f"yolov5_predict_poll",
+                    f"--model=/output/best.onnx",
+                    f"--data=/data/dataset.yaml",
+                    f"--img={self.image_size}",
+                    f"--prediction_in=/prediction/in",
+                    f"--prediction_out=/prediction/out"
+                ]
             )
         )
 
