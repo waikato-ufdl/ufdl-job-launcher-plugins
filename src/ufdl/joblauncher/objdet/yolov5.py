@@ -77,7 +77,7 @@ class ObjectDetectionTrain_Yolo_v5(AbstractTrainJobExecutor):
         self.log_msg(f"{len(class_labels)} labels: {class_labels}")
 
         # Create the dataset YAML file
-        with open(os.path.join(self.job_dir, "data", "dataset.yaml")) as dataset_yaml_file:
+        with open(os.path.join(self.job_dir, "data", "dataset.yaml"), "w") as dataset_yaml_file:
             dataset_yaml_file.write(
                 generate_dataset_yaml("/workspace/data", class_labels)
             )
