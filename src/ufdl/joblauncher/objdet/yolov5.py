@@ -113,12 +113,12 @@ class ObjectDetectionTrain_Yolo_v5(AbstractTrainJobExecutor):
                 ],
                 image_args=[
                     f"yolov5_train",
-                    f"--img={self.image_size}"
+                    f"--img={self.image_size}",
                     f"--batch=16",
-                    f"--epochs=20"
-                    f"--data=/data/dataset.yaml"
-                    f"--weights=/models/pretrained.pt"
-                    f"--project=/output"
+                    f"--epochs=20",
+                    f"--data=/data/dataset.yaml",
+                    f"--weights=/models/pretrained.pt",
+                    f"--project=/output",
                     f"--name=job-number-{self.job_pk}"
                 ]
             )
