@@ -137,13 +137,13 @@ class ObjectDetectionTrain_Yolo_v5(AbstractTrainJobExecutor):
                         f"yolov5_export",
                         f"--weights=/output/job-number-{self.job_pk}/weights/best.pt",
                         f"--img-size", str(self.image_size), str(self.image_size),
-                        f"--include onnx"
+                        f"--include=onnx"
                     ]
                 )
             )
 
             # zip+upload exported model
-            path = self.job_dir + "/output/best.onnx"
+            path = f"{self.job_dir}/output/job-number-{self.job_pk}/weights/best.onnx"
             zipfile = self.job_dir + "/model.zip"
             self._compress([path], zipfile, strip_path=path)
             self._upload(self.contract.model, zipfile)
