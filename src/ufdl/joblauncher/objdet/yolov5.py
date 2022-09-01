@@ -123,25 +123,30 @@ class ObjectDetectionTrain_Yolo_v5(AbstractTrainJobExecutor):
             do_run_success: bool,
             error: Optional[str]
     ):
-
         if do_run_success:
             # export model
-            cmd = [
-                f"yolov5_export",
-                f"--weights=/output/job-number-{self.job_pk}/weights/best.pt",
-                f"--img-size", str(self.image_size), str(self.image_size),
-                f"--include onnx"
-            ]
-            proc = self._execute(cmd)
+            self._fail_on_error(
+                self._run_image(
+                    self.docker_image.url,
+                    volumes=[
+                        self.job_dir + "/data" + ":/data",
+                        self.job_dir + "/models" + ":/models",
+                        self.job_dir + "/output" + ":/output",
+                    ],
+                    image_args=[
+                        f"yolov5_export",
+                        f"--weights=/output/job-number-{self.job_pk}/weights/best.pt",
+                        f"--img-size", str(self.image_size), str(self.image_size),
+                        f"--include onnx"
+                    ]
+                )
+            )
 
-            if proc.returncode == 0:
-                # zip+upload exported model
-                path = self.job_dir + "/output/best.onnx"
-                zipfile = self.job_dir + "/model.zip"
-                self._compress([path], zipfile, strip_path=path)
-                self._upload(self.contract.model, zipfile)
-            else:
-                self._fail_on_error(proc)
+            # zip+upload exported model
+            path = self.job_dir + "/output/best.onnx"
+            zipfile = self.job_dir + "/model.zip"
+            self._compress([path], zipfile, strip_path=path)
+            self._upload(self.contract.model, zipfile)
 
         super()._post_run(pre_run_success, do_run_success, error)
 
