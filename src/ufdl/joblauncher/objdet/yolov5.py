@@ -237,7 +237,7 @@ class ObjectDetectionPredict_Yolo_v5(AbstractPredictJobExecutor):
                     f"--model=/output/best.onnx",
                     f"--data=/data/dataset.yaml",
                     f"--image_size={self.image_size}",
-                    f"--prediction_in=/prediction/in",
+                    f"--prediction_in=/prediction/in/images",
                     f"--prediction_out=/prediction/out"
                 ]
             )
