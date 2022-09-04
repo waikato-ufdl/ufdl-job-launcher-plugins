@@ -161,6 +161,11 @@ class ObjectDetectionPredict_Yolo_v5(AbstractPredictJobExecutor):
         Integer()
     )
 
+    store_predictions: bool = Parameter(Boolean())
+    confidence_scores: Tuple[str, ...] = Parameter(Array(String()))
+
+    predictions_csv = ExtraOutput(BLOB("csv"))
+
     def _pre_run(self):
         """
         Hook method before the actual job is run.
@@ -254,8 +259,7 @@ class ObjectDetectionPredict_Yolo_v5(AbstractPredictJobExecutor):
         :param error: any error that may have occurred, None if none occurred
         :type error: str
         """
-
-        dataset_pk: int = self[self.contract.dataset].pk
+        dataset_pk: int = self.dataset.pk
 
         # zip+upload predictions
         if do_run_success:
@@ -263,11 +267,6 @@ class ObjectDetectionPredict_Yolo_v5(AbstractPredictJobExecutor):
                 self.predictions_csv,
                 glob(self.job_dir + "/prediction/out/*.csv"),
                 self.job_dir + "/predictions.zip")
-            if self.generate_mask_images:
-                self._compress_and_upload(
-                    self.predictions_png,
-                    glob(self.job_dir + "/prediction/out/*-mask.png"),
-                    self.job_dir + "/predictions_masks.zip")
 
         # post-process predictions
         if do_run_success and self.store_predictions:
