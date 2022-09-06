@@ -103,6 +103,7 @@ class ObjectDetectionTrain_Yolo_v5(AbstractTrainJobExecutor):
         self._fail_on_error(
             self._run_image(
                 self.docker_image.url,
+                docker_args=["--shm-size", "8G"],
                 volumes=[
                     self.job_dir + "/data" + ":/data",
                     self.job_dir + "/models" + ":/models",
@@ -132,6 +133,7 @@ class ObjectDetectionTrain_Yolo_v5(AbstractTrainJobExecutor):
             self._fail_on_error(
                 self._run_image(
                     self.docker_image.url,
+                    docker_args=["--shm-size", "8G"],
                     volumes=[
                         self.job_dir + "/data" + ":/data",
                         self.job_dir + "/models" + ":/models",
@@ -235,6 +237,7 @@ class ObjectDetectionPredict_Yolo_v5(AbstractPredictJobExecutor):
         self._fail_on_error(
             self._run_image(
                 self.docker_image.url,
+                docker_args=["--shm-size", "8G"],
                 volumes=[
                     f"{self.job_dir}/data:/data",
                     f"{self.job_dir}/models:/models",
