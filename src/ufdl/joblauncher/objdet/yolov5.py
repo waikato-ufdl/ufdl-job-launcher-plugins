@@ -44,6 +44,10 @@ class ObjectDetectionTrain_Yolo_v5(AbstractTrainJobExecutor):
         Integer()
     )
 
+    epochs: int = Parameter(
+        Integer()
+    )
+
     def _pre_run(self):
         """
         Hook method before the actual job is run.
@@ -113,7 +117,7 @@ class ObjectDetectionTrain_Yolo_v5(AbstractTrainJobExecutor):
                     f"yolov5_train",
                     f"--img={self.image_size}",
                     f"--batch=16",
-                    f"--epochs=20",
+                    f"--epochs={self.epochs}",
                     f"--data=/data/dataset.yaml",
                     f"--weights=/models/pretrained.pt",
                     f"--project=/output",
