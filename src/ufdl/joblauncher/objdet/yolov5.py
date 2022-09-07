@@ -9,6 +9,7 @@ from ufdl.jobcontracts.standard import Train, Predict
 
 from ufdl.joblauncher.core.executors import AbstractTrainJobExecutor, AbstractPredictJobExecutor
 from ufdl.joblauncher.core.executors.descriptors import ExtraOutput, Parameter
+from ufdl.joblauncher.core.executors.parsers import CommandProgressParser
 from ufdl.jobtypes.base import Boolean, Integer, String
 from ufdl.jobtypes.standard import Name, PK
 from ufdl.jobtypes.standard.container import Array
@@ -20,6 +21,8 @@ from ufdl.json.object_detection import VideoAnnotation
 
 from ufdl.pythonclient.functional.core.models.pretrained_model import download as pretrainedmodel_download
 
+from wai.json.raw import RawJSONObject
+
 from ..utils import write_to_file
 from .core import read_rois, calculate_confidence_scores, store_annotations, store_scores
 
@@ -27,6 +30,13 @@ from .core import read_rois, calculate_confidence_scores, store_annotations, sto
 DOMAIN_TYPE = Domain("Object Detection")
 FRAMEWORK_TYPE = Framework("yolo", "v5")
 OBJECT_DETECTION_YOLO_V5_CONTRACT_TYPES = {'DomainType': DOMAIN_TYPE, 'FrameworkType': FRAMEWORK_TYPE}
+
+
+class YoloTrainCommandProgressParser(CommandProgressParser):
+
+    def parse(self, cmd_output: str, last_progress: float) -> Tuple[float, Optional[RawJSONObject]]:
+        # FIXME: Test implementation just forwards command output as metadata
+        return last_progress, {'output': cmd_output}
 
 
 class ObjectDetectionTrain_Yolo_v5(AbstractTrainJobExecutor):
@@ -122,7 +132,8 @@ class ObjectDetectionTrain_Yolo_v5(AbstractTrainJobExecutor):
                     f"--weights=/models/pretrained.pt",
                     f"--project=/output",
                     f"--name=job-number-{self.job_pk}"
-                ]
+                ],
+                command_progress_parser=YoloTrainCommandProgressParser()
             )
         )
 
