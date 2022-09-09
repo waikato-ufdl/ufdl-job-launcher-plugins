@@ -218,15 +218,6 @@ class ObjectDetectionPredict_Yolo_v5(AbstractPredictJobExecutor):
         output_dir = self.job_dir + "/prediction/in"
         self._download_dataset(pk, output_dir)
 
-        # determine number of classes
-        class_labels = []
-        with open(os.path.join(output_dir, "labels.csv")) as lf:
-            lines = lf.readlines()
-        for line in lines[1:]:
-            index, label = line.strip().split(",", 1)
-            class_labels.append(label)
-        self.log_msg(f"{len(class_labels)} labels: {class_labels}")
-
         # download model
         model = self.job_dir + "/model.zip"
         with open(model, "wb") as zip_file:
@@ -237,6 +228,15 @@ class ObjectDetectionPredict_Yolo_v5(AbstractPredictJobExecutor):
         msg = self._decompress(model, output_dir)
         if msg is not None:
             raise Exception("Failed to extract model pk=%d!\n%s" % (pk, msg))
+
+        # determine number of classes
+        class_labels = []
+        with open(os.path.join(output_dir, "labels.csv")) as lf:
+            lines = lf.readlines()
+        for line in lines[1:]:
+            index, label = line.strip().split(",", 1)
+            class_labels.append(label)
+        self.log_msg(f"{len(class_labels)} labels: {class_labels}")
 
         # replace parameters in template and save it to disk
         template_code = self._expand_template()
