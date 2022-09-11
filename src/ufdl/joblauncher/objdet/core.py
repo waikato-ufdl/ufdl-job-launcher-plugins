@@ -7,6 +7,8 @@ from ufdl.json.object_detection import ImageAnnotation, Polygon, VideoAnnotation
 from ufdl.joblauncher.core import load_class
 from ufdl.joblauncher.core.executors import AbstractJobExecutor
 from ufdl.pythonclient.functional.object_detection.dataset import get_metadata, set_metadata, set_annotations_for_file
+from wai.annotations.roi.util import ROIObject
+from wai.json.object import Absent
 
 from .confidence import AbstractConfidenceScore
 
@@ -19,37 +21,32 @@ def read_rois(csv_file: str) -> Tuple[List[ImageAnnotation], List[float]]:
     :param csvfile: the CSV file to read
     :return: the tuple of annotations list and scores list
     """
-    annotations: List[ImageAnnotation] = []
-    scores: List[float] = []
     with open(csv_file, "r") as cf:
         reader = csv.DictReader(cf)
-        for row in reader:
-            if ('x' in row) and ('y' in row) and ('w' in row) and ('h' in row) and ('label_str' in row) and ('score' in row):
-                polygon = None
-                if ('poly_x' in row) and ('poly_y' in row):
-                    xs = row['poly_x'].split(",")
-                    ys = row['poly_y'].split(",")
-                    p = []
-                    for x, y in zip(xs, ys):
-                        p.append([int(float(x)), int(float(y))])
-                    polygon = Polygon(points=p)
-                if polygon is not None:
-                    annotation = ImageAnnotation(
-                        x=int(float(row['x'])),
-                        y=int(float(row['y'])),
-                        width=int(float(row['w'])),
-                        height=int(float(row['h'])),
-                        label=row['label_str'],
-                        polygon=polygon)
-                else:
-                    annotation = ImageAnnotation(
-                        x=int(float(row['x'])),
-                        y=int(float(row['y'])),
-                        width=int(float(row['w'])),
-                        height=int(float(row['h'])),
-                        label=row['label_str'])
-                annotations.append(annotation)
-                scores.append(float(row['score']))
+        roi_objects = [
+            ROIObject.from_dict(row)
+            for row in reader
+        ]
+
+    annotations = [
+        ImageAnnotation(
+            x=roi_object.x,
+            y=roi_object.y,
+            width=roi_object.w,
+            height=roi_object.h,
+            label=roi_object.label_str,
+            polygon=(
+                Polygon.from_geometric_polygon(roi_object.polygon()) if roi_object.has_polygon()
+                else Absent
+            )
+        )
+        for roi_object in roi_objects
+    ]
+
+    scores = [
+        roi_object.score
+        for roi_object in roi_objects
+    ]
 
     return annotations, scores
 
