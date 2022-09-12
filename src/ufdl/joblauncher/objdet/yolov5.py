@@ -311,7 +311,7 @@ class ObjectDetectionPredict_Yolo_v5(AbstractPredictJobExecutor):
                     annotations, scores = read_rois(csv_file)
 
                     # See if the image filename comes from a video frame
-                    parsed_video_frame_filename = ParsedVideoFrameFilename.try_parse_from_string(f)
+                    parsed_video_frame_filename = ParsedVideoFrameFilename.try_parse_from_string(img_name)
                     if parsed_video_frame_filename is not None:
                         # Get the list of video annotations for the video
                         video_annotations_for_video = video_annotations.get(parsed_video_frame_filename.video_filename)
