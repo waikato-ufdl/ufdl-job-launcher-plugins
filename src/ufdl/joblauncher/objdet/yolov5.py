@@ -32,13 +32,6 @@ FRAMEWORK_TYPE = Framework("yolo", "v5")
 OBJECT_DETECTION_YOLO_V5_CONTRACT_TYPES = {'DomainType': DOMAIN_TYPE, 'FrameworkType': FRAMEWORK_TYPE}
 
 
-class YoloTrainCommandProgressParser(CommandProgressParser):
-
-    def parse(self, cmd_output: str, last_progress: float) -> Tuple[float, Optional[RawJSONObject]]:
-        # FIXME: Test implementation just forwards command output as metadata
-        return last_progress, {'output': cmd_output}
-
-
 class ObjectDetectionTrain_Yolo_v5(AbstractTrainJobExecutor):
     """
     For executing Tensorflow object detection jobs.
@@ -404,3 +397,47 @@ class ParsedVideoFrameFilename:
             match[1],
             float(match[2])
         )
+
+
+# Regex for parsing the progress command output
+YOLO_V5_TRAIN_COMMAND_OUTPUT_REGEX = re.compile(
+    r"""
+    ^                           # Regex start
+    .*                          # Some leading characters
+    (?P<epoch_current>\d+)      # The current epoch (0-based)...
+    /                           # ...out of...
+    (?P<epoch_out_of>\d+)       # ...how many epochs (also 0-based)
+    .*                          # Some intervening characters
+    (?P<batch_current>\d+)      # The position of the batch in the current epoch (1-based)...
+    /                           #...out of...
+    (?P<batch_out_of>\d+)       #...how many batches (also 1-based)
+    .*                          # Some trailing characters
+    $                           # Regex end
+    """,
+    flags=re.VERBOSE
+)
+
+
+class YoloTrainCommandProgressParser(CommandProgressParser):
+    def parse(self, cmd_output: str, last_progress: float) -> Tuple[float, Optional[RawJSONObject]]:
+        # See if the output matches the known progress format
+        match = YOLO_V5_TRAIN_COMMAND_OUTPUT_REGEX.match(cmd_output)
+
+        # If not, just return the last progress
+        if match is None:
+            return last_progress, None
+
+        # How many epochs are there? (epoch_out_of is 0-based)
+        num_epochs = int(match.group('epoch_out_of')) + 1
+
+        # How many epochs have been completed?
+        epoch_progress = int(match.group('epoch_current')) / num_epochs
+
+        # How far through the current epoch are we? (batch_current/_out_of are 1-based)
+        batch_progress = (int(match.group('batch_current')) - 1) / int(match.group('batch_out_of'))
+
+        # How far through the overall training process are we
+        overall_progress = epoch_progress + batch_progress / num_epochs
+
+        # Train command represents only 70% of the overall job execution
+        return overall_progress * 0.7 + 0.2, None
