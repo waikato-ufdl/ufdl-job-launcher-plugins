@@ -403,12 +403,12 @@ class ParsedVideoFrameFilename:
 YOLO_V5_TRAIN_COMMAND_OUTPUT_REGEX = re.compile(
     r"""
     ^                           # Regex start
-    .*                          # Some leading characters
+    .*?                         # Some leading characters
     (?P<epoch_current>\d+)      # The current epoch (0-based)...
     /                           # ...out of...
     (?P<epoch_out_of>\d+)       # ...how many epochs (also 0-based)
-    .*                          # Some intervening characters
-    (?P<batch_current>\d+)      # The position of the batch in the current epoch (1-based)...
+    .*?                         # Some intervening characters
+    (?P<batch_current>\d+)      # The position of the batch in the current epoch (0-based)...
     /                           #...out of...
     (?P<batch_out_of>\d+)       #...how many batches (also 1-based)
     .*                          # Some trailing characters
@@ -430,13 +430,22 @@ class YoloTrainCommandProgressParser(CommandProgressParser):
         # How many epochs are there? (epoch_out_of is 0-based)
         num_epochs = int(match.group('epoch_out_of')) + 1
 
-        # How many epochs have been completed?
-        epoch_progress = int(match.group('epoch_current')) / num_epochs
+        # How many epochs have been completed? (epoch_current is 0-based)
+        completed_epochs = int(match.group('epoch_current'))
 
-        # How far through the current epoch are we? (batch_current/_out_of are 1-based)
-        batch_progress = (int(match.group('batch_current')) - 1) / int(match.group('batch_out_of'))
+        # What percentage of epochs have been completed?
+        epoch_progress = completed_epochs / num_epochs
 
-        # How far through the overall training process are we
+        # How many batches are there in this epoch? (batch_out_of is 1-based)
+        num_batches = int(match.group('batch_out_of'))
+
+        # How many batches have been completed? (batch_current is 0-based)
+        completed_batches = int(match.group('epoch_current'))
+
+        # What percentage of the way through the current epoch are we?
+        batch_progress = completed_batches / num_batches
+
+        # What percentage of the way through the overall training process are we?
         overall_progress = epoch_progress + batch_progress / num_epochs
 
         # Train command represents only 70% of the overall job execution
