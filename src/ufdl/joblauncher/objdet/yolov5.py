@@ -71,10 +71,12 @@ class ObjectDetectionTrain_Yolo_v5(AbstractTrainJobExecutor):
 
         # download dataset
         # decompress dataset
+        self.progress(0.05, comment="Downloading dataset...")
         output_dir = self.job_dir + "/data"
         self._download_dataset(pk, output_dir)
 
         # determine number of classes
+        self.progress(0.1, comment="Reading labels...")
         class_labels = []
         with open(os.path.join(self.job_dir, "data", "labels.csv")) as lf:
             lines = lf.readlines()
@@ -84,12 +86,14 @@ class ObjectDetectionTrain_Yolo_v5(AbstractTrainJobExecutor):
         self.log_msg(f"{len(class_labels)} labels: {class_labels}")
 
         # download pretrained model and put it into models dir
+        self.progress(0.15, comment="Downloading pre-trained model...")
         model_file = self.job_dir + "/models/pretrained.pt"
         with open(model_file, "wb") as mf:
             for b in pretrainedmodel_download(self.context, self.pretrained_model.pk):
                 mf.write(b)
 
         # replace parameters in template and save it to disk
+        self.progress(0.2, comment="Generating training template...")
         template_code = self._expand_template()
         if not isinstance(template_code, str):
             template_code = "\n".join(template_code)
@@ -106,6 +110,8 @@ class ObjectDetectionTrain_Yolo_v5(AbstractTrainJobExecutor):
         """
         Executes the actual job. Only gets run if pre-run was successful.
         """
+        self.progress(0.2, comment="Running Docker image...")
+
         # build model
         self._fail_on_error(
             self._run_image(
@@ -137,6 +143,8 @@ class ObjectDetectionTrain_Yolo_v5(AbstractTrainJobExecutor):
             error: Optional[str]
     ):
         if do_run_success:
+            self.progress(0.9, comment="Exporting model as ONNX...")
+
             # export model
             self._fail_on_error(
                 self._run_image(
@@ -155,6 +163,8 @@ class ObjectDetectionTrain_Yolo_v5(AbstractTrainJobExecutor):
                     ]
                 )
             )
+
+            self.progress(0.95, comment="Uploading model...")
 
             # zip+upload exported model
             zipfile = self.job_dir + "/model.zip"
