@@ -71,13 +71,8 @@ class ObjectDetectionTrain_YOLACTPP_20200211(AbstractTrainJobExecutor):
 
         # download dataset
         pk: int = self[self.contract.dataset].pk
-        data = self._download_dataset(pk)
-
-        # decompress dataset
         output_dir = self.job_dir + "/data"
-        msg = self._decompress(data, output_dir)
-        if msg is not None:
-            raise Exception("Failed to extract dataset pk=%d!\n%s" % (pk, msg))
+        self._download_dataset(pk, output_dir)
 
         # determine labels
         labels = glob(self.job_dir + "/**/labels.txt", recursive=True)
@@ -211,13 +206,8 @@ class ObjectDetectionPredict_YOLACTPP_20200211(AbstractPredictJobExecutor):
         pk: int = self[self.contract.dataset].pk
 
         # download dataset
-        data = self._download_dataset(pk, self.clear_dataset)
-
-        # decompress dataset
         output_dir = self.job_dir + "/prediction/in"
-        msg = self._decompress(data, output_dir)
-        if msg is not None:
-            raise Exception("Failed to extract dataset pk=%d!\n%s" % (pk, msg))
+        self._download_dataset(pk, output_dir)
 
         # download model
         model = self.job_dir + "/model.zip"
