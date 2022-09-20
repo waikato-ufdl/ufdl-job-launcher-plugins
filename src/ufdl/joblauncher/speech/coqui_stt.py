@@ -119,24 +119,7 @@ class SpeechTrain_Coqui_STT(AbstractTrainJobExecutor):
                     self.job_dir + "/models" + ":/models",
                     self.job_dir + "/output" + ":/output",
                 ],
-                image_args=[
-                    "stt_train",
-                    "--alphabet_config_path", "/data/alphabet.txt",
-                    "--train_files", "/data/train/samples.csv",
-                    "--dev_files", "/data/val/samples.csv",
-                    "--test_files", "/data/test/samples.csv",
-                    "--drop_source_layers", "2",
-                    "--n_hidden", "2048",
-                    "--use_allow_growth", "true",
-                    "--train_cudnn", "true",
-                    "--train_batch_size", "16",
-                    "--dev_batch_size", "16",
-                    "--export_batch_size", "16",
-                    "--epochs", str(self.epochs),
-                    "--skip_batch_test", "true",
-                    "--load_checkpoint_dir", "/models/coqui-stt-1.3.0-checkpoint",
-                    "--save_checkpoint_dir", "/output/model"
-                ]
+                image_args=list(self._expand_template())
             )
         )
 
@@ -230,12 +213,7 @@ class SpeechPredict_Coqui_STT(AbstractPredictJobExecutor):
                     f"{self.job_dir}/output:/output",
                     f"{self.job_dir}/prediction:/prediction"
                 ],
-                image_args=[
-                    f"stt_transcribe_poll",
-                    f"--model=/output/model.tflite",
-                    f"--prediction_in=/prediction/in",
-                    f"--prediction_out=/prediction/out"
-                ]
+                image_args=list(self._expand_template())
             )
         )
 
