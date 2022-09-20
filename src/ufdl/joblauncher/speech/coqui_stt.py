@@ -319,56 +319,6 @@ class SpeechPredict_Coqui_STT(AbstractPredictJobExecutor):
         super()._post_run(pre_run_success, do_run_success, error)
 
 
-# Regex for matching the format filename of an image which is actually a video frame
-VIDEO_FRAME_FILENAME_REGEX = re.compile(
-    r"""
-    ^                                   # Regex start
-    (?P<video_filename>.*)              # The filename of the source video
-    @                                   # Literal @
-    \|                                  # Opening |
-    frametime                           # Keyword 'frametime'
-    =                                   # Literal =
-    (?P<frametime>                      # Frametime (float)
-        ([0-9]+(\.[0-9]*)?)             # Either one or more leading digits, optionally followed by a fractional part,
-        |                               # or,
-        (\.[0-9]+)                      # just a fractional part (dot followed by one or more digits)
-    )
-    \|                                  # Closing |
-    \.jpg                               # .jpg extension
-    $                                   # Regex end
-    """,
-    flags=re.VERBOSE
-)
-
-
-@dataclass
-class ParsedVideoFrameFilename:
-    """
-    Represents the results of parsing a video-frame filename.
-    """
-    # The source filename
-    video_frame_filename: str
-
-    # The original filename of the video
-    video_filename: str
-
-    # The timestamp from which the frame image was taken
-    frame_time: float
-
-    @classmethod
-    def try_parse_from_string(cls, string: str) -> Optional['ParsedVideoFrameFilename']:
-        match = VIDEO_FRAME_FILENAME_REGEX.match(string)
-
-        if match is None:
-            return None
-
-        return ParsedVideoFrameFilename(
-            match[0],
-            match[1],
-            float(match[2])
-        )
-
-
 # Regex for parsing the progress command output
 YOLO_V5_TRAIN_COMMAND_OUTPUT_REGEX = re.compile(
     r"""
