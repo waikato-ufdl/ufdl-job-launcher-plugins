@@ -120,7 +120,7 @@ class SpeechTrain_Coqui_STT(AbstractTrainJobExecutor):
                     self.job_dir + "/output" + ":/output",
                 ],
                 image_args=[
-                    "stt_train"
+                    "stt_train",
                     "--alphabet_config_path", "/data/alphabet.txt",
                     "--train_files", "/data/train/samples.csv",
                     "--dev_files", "/data/val/samples.csv",
