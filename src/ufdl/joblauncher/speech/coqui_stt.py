@@ -95,7 +95,7 @@ class SpeechTrain_Coqui_STT(AbstractTrainJobExecutor):
                 ],
                 image_args=[
                     "stt_alphabet",
-                    "-i", "/data/samples.csv",
+                    "-i", "/data/train/samples.csv", "/data/val/samples.csv", "/data/test/samples.csv",
                     "-o", "/data/alphabet.txt"
                 ]
             )
