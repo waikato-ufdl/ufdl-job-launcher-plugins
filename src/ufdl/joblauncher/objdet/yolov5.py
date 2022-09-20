@@ -450,7 +450,7 @@ class YoloTrainCommandProgressParser(CommandProgressParser):
         num_batches = int(match.group('batch_out_of'))
 
         # How many batches have been completed? (batch_current is 0-based)
-        completed_batches = int(match.group('epoch_current'))
+        completed_batches = int(match.group('batch_current'))
 
         # What percentage of the way through the current epoch are we?
         batch_progress = completed_batches / num_batches
