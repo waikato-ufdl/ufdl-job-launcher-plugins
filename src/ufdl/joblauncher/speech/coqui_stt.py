@@ -1,10 +1,9 @@
 import re
 import tarfile
-from dataclasses import dataclass
 from glob import glob
 import os
 import traceback
-from typing import Dict, List, Optional, Tuple
+from typing import Optional, Tuple
 
 from ufdl.jobcontracts.standard import Train, Predict
 
@@ -18,13 +17,12 @@ from ufdl.jobtypes.standard.container import Array
 from ufdl.jobtypes.standard.server import Domain, Framework, PretrainedModel, PretrainedModelInstance
 from ufdl.jobtypes.standard.util import BLOB
 
-from ufdl.json.object_detection import VideoAnnotation
-
 from ufdl.pythonclient.functional.core.models.pretrained_model import download as pretrainedmodel_download
 
 from wai.json.raw import RawJSONObject
 
 from ..utils import write_to_file
+from .core import store_transcription
 
 
 DOMAIN_TYPE = Domain("Speech")
@@ -167,7 +165,7 @@ class SpeechPredict_Coqui_STT(AbstractPredictJobExecutor):
     store_predictions: bool = Parameter(Boolean())
     confidence_scores: Tuple[str, ...] = Parameter(Array(String()))
 
-    predictions_csv = ExtraOutput(BLOB("csv"))
+    predictions_txt = ExtraOutput(BLOB("txt"))
 
     def _pre_run(self):
         """
@@ -235,61 +233,27 @@ class SpeechPredict_Coqui_STT(AbstractPredictJobExecutor):
         # zip+upload predictions
         if do_run_success:
             self._compress_and_upload(
-                self.predictions_csv,
-                glob(self.job_dir + "/prediction/out/*.csv"),
+                self.predictions_txt,
+                glob(self.job_dir + "/prediction/out/*.txt"),
                 self.job_dir + "/predictions.zip")
 
         # post-process predictions
         if do_run_success and self.store_predictions:
             try:
-                # Create a buffer to accumulate video annotations into
-                video_annotations: Dict[str, List[VideoAnnotation]] = {}
+                for f in glob(self.job_dir + "/prediction/out/*.wav"):
+                    wav_name = os.path.basename(f)
 
-                for f in glob(self.job_dir + "/prediction/out/*"):
-                    if f.endswith(".csv") or f.endswith("-mask.png"):
-                        continue
-                    img_name = os.path.basename(f)
-                    # load CSV file and create annotations
-                    csv_file = os.path.splitext(f)[0] + "-rois.csv"
-                    annotations, scores = read_rois(csv_file)
+                    # load TXT file and create annotations
+                    txt_file = os.path.splitext(f)[0] + ".txt"
 
-                    # See if the image filename comes from a video frame
-                    parsed_video_frame_filename = ParsedVideoFrameFilename.try_parse_from_string(img_name)
-                    if parsed_video_frame_filename is not None:
-                        # Get the list of video annotations for the video
-                        video_annotations_for_video = video_annotations.get(parsed_video_frame_filename.video_filename)
-
-                        # If there is no list yet, create it
-                        if video_annotations_for_video is None:
-                            video_annotations_for_video = []
-                            video_annotations[parsed_video_frame_filename.video_filename] = video_annotations_for_video
-
-                        # Add the video annotations for this frame
-                        video_annotations_for_video += [
-                            VideoAnnotation.from_image_annotation(annotation, parsed_video_frame_filename.frame_time)
-                            for annotation in annotations
-                        ]
-
+                    try:
+                        with open(txt_file, "r") as file:
+                            transcription = file.read()
+                    except FileNotFoundError:
+                        self.log_msg(f"No matching transcription file found for '{wav_name}'")
                     else:
                         # set annotations for image
-                        store_annotations(self, dataset_pk, img_name, annotations)
-                        # set score in metadata
-                        store_scores(self, dataset_pk, img_name, scores)
-                        # calculate confidence scores
-                        calculate_confidence_scores(
-                            self,
-                            dataset_pk,
-                            img_name,
-                            self.confidence_scores,
-                            annotations,
-                            scores
-                        )
-
-                # Store the video annotations back into the dataset
-                # TODO: Implement scores/confidence scores for videos as well
-                for video_filename, video_annotations_for_video in video_annotations.items():
-                    store_annotations(self, dataset_pk, video_filename, video_annotations_for_video)
-
+                        store_transcription(self, dataset_pk, wav_name, transcription)
             except:
                 self.log_msg(
                     f"Failed to post-process predictions generated by job {self.job_pk} for dataset {dataset_pk}!\n"
