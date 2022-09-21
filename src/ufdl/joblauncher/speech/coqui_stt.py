@@ -119,7 +119,9 @@ class SpeechTrain_Coqui_STT(AbstractTrainJobExecutor):
                     self.job_dir + "/models" + ":/models",
                     self.job_dir + "/output" + ":/output",
                 ],
-                image_args=list(self._expand_template())
+                image_args=list(self._expand_template()),
+                # TODO: Calculate number of steps from size of dataset and batch size
+                command_progress_parser=CoquiSTTTrainCommandProgressParser(self.epochs, 1)
             )
         )
 
@@ -298,17 +300,18 @@ class SpeechPredict_Coqui_STT(AbstractPredictJobExecutor):
 
 
 # Regex for parsing the progress command output
-YOLO_V5_TRAIN_COMMAND_OUTPUT_REGEX = re.compile(
+COQUI_STT_TRAIN_COMMAND_OUTPUT_REGEX = re.compile(
     r"""
     ^                           # Regex start
-    .*?                         # Some leading characters
-    (?P<epoch_current>\d+)      # The current epoch (0-based)...
-    /                           # ...out of...
-    (?P<epoch_out_of>\d+)       # ...how many epochs (also 0-based)
+    Epoch                       # Epoch keyword
+    \s                          # Space
+    (?P<epoch_current>\d+)      # The current epoch (0-based)
     .*?                         # Some intervening characters
-    (?P<batch_current>\d+)      # The position of the batch in the current epoch (0-based)...
-    /                           #...out of...
-    (?P<batch_out_of>\d+)       #...how many batches (also 1-based)
+    Training                    # Training keyword
+    .*?                         # Some intervening characters
+    Steps:                      # Steps keyword (followed by a colon)
+    \s                          # Space
+    (?P<step_current>\d+)      # The current step in the current epoch (0-based)
     .*                          # Some trailing characters
     $                           # Regex end
     """,
@@ -316,35 +319,37 @@ YOLO_V5_TRAIN_COMMAND_OUTPUT_REGEX = re.compile(
 )
 
 
-class YoloTrainCommandProgressParser(CommandProgressParser):
+class CoquiSTTTrainCommandProgressParser(CommandProgressParser):
+    def __init__(self, num_epochs: int, num_steps: int):
+        self._num_epochs = num_epochs
+        self._num_steps = num_steps
+
     def parse(self, cmd_output: str, last_progress: float) -> Tuple[float, Optional[RawJSONObject]]:
         # See if the output matches the known progress format
-        match = YOLO_V5_TRAIN_COMMAND_OUTPUT_REGEX.match(cmd_output)
+        match = COQUI_STT_TRAIN_COMMAND_OUTPUT_REGEX.match(cmd_output)
 
         # If not, just return the last progress
         if match is None:
             return last_progress, None
 
-        # How many epochs are there? (epoch_out_of is 0-based)
-        num_epochs = int(match.group('epoch_out_of')) + 1
-
         # How many epochs have been completed? (epoch_current is 0-based)
         completed_epochs = int(match.group('epoch_current'))
 
         # What percentage of epochs have been completed?
-        epoch_progress = completed_epochs / num_epochs
+        epoch_progress = completed_epochs / self._num_epochs
 
-        # How many batches are there in this epoch? (batch_out_of is 1-based)
-        num_batches = int(match.group('batch_out_of'))
+        # How many steps have been completed? (step_current is 0-based)
+        completed_steps = int(match.group('step_current'))
 
-        # How many batches have been completed? (batch_current is 0-based)
-        completed_batches = int(match.group('epoch_current'))
+        # If we under-estimated how many steps-per-epoch there are, adjust accordingly
+        if completed_steps > self._num_steps:
+            self._num_steps = completed_steps
 
         # What percentage of the way through the current epoch are we?
-        batch_progress = completed_batches / num_batches
+        step_progress = completed_steps / self._num_steps
 
         # What percentage of the way through the overall training process are we?
-        overall_progress = epoch_progress + batch_progress / num_epochs
+        overall_progress = epoch_progress + step_progress / self._num_epochs
 
         # Train command represents only 70% of the overall job execution
         return overall_progress * 0.7 + 0.2, None
