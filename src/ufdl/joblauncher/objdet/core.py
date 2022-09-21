@@ -1,11 +1,16 @@
 import csv
 import json
+import shlex
 import traceback
+from abc import ABC
 from typing import Dict, Iterable, List, Tuple, Union
 
-from ufdl.json.object_detection import ImageAnnotation, Polygon, VideoAnnotation
 from ufdl.joblauncher.core import load_class
-from ufdl.joblauncher.core.executors import AbstractJobExecutor
+from ufdl.joblauncher.core.executors import AbstractJobExecutor, AbstractPredictJobExecutor
+from ufdl.joblauncher.core.executors.descriptors import Parameter
+from ufdl.jobtypes.base import String
+from ufdl.jobtypes.standard.container import Array
+from ufdl.json.object_detection import ImageAnnotation, Polygon, VideoAnnotation
 from ufdl.pythonclient.functional.object_detection.dataset import get_metadata, set_metadata, set_annotations_for_file
 from wai.annotations.roi.util import ROIObject
 from wai.json.object import Absent
@@ -160,3 +165,30 @@ def calculate_confidence_scores(
                 f"for image {img_name} in dataset {dataset_pk}!\n"
                 f"{traceback.format_exc()}"
             )
+
+
+class AbstractObjDetPredictJobExecutor(AbstractPredictJobExecutor, ABC):
+    # Which video frames to extract for prediction
+    unlabelled: Tuple[str, ...] = Parameter(
+        Array(String())
+    )
+
+    def _download_dataset(
+            self,
+            pk: int,
+            output_dir: str,
+            additional_source_options: Union[str, Tuple[str, ...]] = tuple()
+    ):
+        options: List[str] = (
+            shlex.split(additional_source_options) if isinstance(additional_source_options, str)
+            else list(additional_source_options)
+        )
+
+        if len(self.unlabelled) != 0:
+            options += ["--unlabelled", *self.unlabelled]
+
+        super()._download_dataset(
+            pk,
+            output_dir,
+            tuple(options)
+        )

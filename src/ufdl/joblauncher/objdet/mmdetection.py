@@ -6,7 +6,7 @@ from typing import Optional, Tuple
 
 from ufdl.jobcontracts.standard import Train, Predict
 
-from ufdl.joblauncher.core.executors import AbstractTrainJobExecutor, AbstractPredictJobExecutor
+from ufdl.joblauncher.core.executors import AbstractTrainJobExecutor
 from ufdl.joblauncher.core.executors.descriptors import Parameter, ExtraOutput
 
 from ufdl.jobtypes.base import String, Boolean
@@ -20,7 +20,13 @@ from ufdl.pythonclient.functional.core.models.pretrained_model import download a
 from wai.json.object import Absent
 
 from ..utils import write_to_file
-from .core import read_rois, calculate_confidence_scores, store_annotations, store_scores
+from .core import (
+    AbstractObjDetPredictJobExecutor,
+    read_rois,
+    calculate_confidence_scores,
+    store_annotations,
+    store_scores
+)
 
 
 DOMAIN_TYPE = Domain("Object Detection")
@@ -162,7 +168,7 @@ class ObjectDetectionTrain_MMDet_20200301(AbstractTrainJobExecutor):
         super()._post_run(pre_run_success, do_run_success, error)
 
 
-class ObjectDetectionPredict_MMDet_20200301(AbstractPredictJobExecutor):
+class ObjectDetectionPredict_MMDet_20200301(AbstractObjDetPredictJobExecutor):
     """
     For executing MMDetection object detection prediction jobs.
     """

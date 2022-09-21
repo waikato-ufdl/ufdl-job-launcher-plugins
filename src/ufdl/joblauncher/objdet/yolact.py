@@ -18,7 +18,13 @@ from ufdl.jobtypes.standard.util import BLOB
 from ufdl.pythonclient.functional.core.models.pretrained_model import download as pretrainedmodel_download
 
 from ..utils import write_to_file
-from .core import read_rois, calculate_confidence_scores, store_annotations, store_scores
+from .core import (
+    AbstractObjDetPredictJobExecutor,
+    read_rois,
+    calculate_confidence_scores,
+    store_annotations,
+    store_scores
+)
 
 
 DOMAIN_TYPE = Domain("Object Detection")
@@ -174,7 +180,7 @@ class ObjectDetectionTrain_YOLACTPP_20200211(AbstractTrainJobExecutor):
         super()._post_run(pre_run_success, do_run_success, error)
 
 
-class ObjectDetectionPredict_YOLACTPP_20200211(AbstractPredictJobExecutor):
+class ObjectDetectionPredict_YOLACTPP_20200211(AbstractObjDetPredictJobExecutor):
     """
     For executing YOLACT++ object detection prediction jobs.
     """
