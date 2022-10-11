@@ -46,7 +46,7 @@ class ImageClassificationTrain_TF_1_14(AbstractTrainJobExecutor):
         steps = self.steps
         search_str = ": Step "
 
-        def parser(cmd_output: str, last_progress: float) -> float:
+        def parser(cmd_output: str, last_progress: float) -> Tuple[float, None]:
             if search_str in cmd_output:
                 step = cmd_output[cmd_output.index(search_str) + len(search_str):]
                 if ":" in step:
@@ -55,14 +55,13 @@ class ImageClassificationTrain_TF_1_14(AbstractTrainJobExecutor):
                     step = int(step)
                     progress = step / steps * 0.7 + 0.2  # training the only represents 0.7 in the overall train job and starts 0.2
                     if progress != last_progress:
-                        self.progress(progress)
-                        return progress
+                        return progress, None
                 except:
                     pass
 
-            return last_progress
+            return last_progress, None
 
-        return parser
+        return CommandProgressParser.from_callable(parser)
 
     def _pre_run(self):
         """
