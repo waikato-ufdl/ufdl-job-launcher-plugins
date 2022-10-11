@@ -74,14 +74,16 @@ class ImageClassificationTrain_TF_1_14(AbstractTrainJobExecutor):
         if not super()._pre_run():
             return False
 
+        # create directories
+        self._mkdir(self.job_dir + "/output")
+        self._mkdir(self.job_dir + "/models")
+        self._mkdir(self.job_dir + "/data")
+
         # download dataset
         pk: int = self[self.contract.dataset].pk
         output_dir = self.job_dir + "/data"
         self._download_dataset(pk, output_dir)
 
-        # create remaining directories
-        self._mkdir(self.job_dir + "/output")
-        self._mkdir(self.job_dir + "/models")
         return True
 
     def _do_run(self):
