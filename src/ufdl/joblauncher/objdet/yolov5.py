@@ -100,11 +100,12 @@ class ObjectDetectionTrain_Yolo_v5(AbstractTrainJobExecutor):
 
         # replace parameters in template and save it to disk
         self.progress(0.2, comment="Generating training template...")
-        template_code = self._expand_template()
+        template_code = self._expand_template({
+            "num-classes": len(class_labels),
+            "classes": class_labels
+        })
         if not isinstance(template_code, str):
             template_code = "\n".join(template_code)
-        template_code = template_code.replace("${num-classes}", str(len(class_labels)))
-        template_code = template_code.replace("${classes}", str(class_labels))
         template_file = os.path.join(self.job_dir, "data", "dataset.yaml")
         with open(template_file, "w") as tf:
             tf.write(template_code)
@@ -248,11 +249,12 @@ class ObjectDetectionPredict_Yolo_v5(AbstractObjDetPredictJobExecutor):
         self.log_msg(f"{len(class_labels)} labels: {class_labels}")
 
         # replace parameters in template and save it to disk
-        template_code = self._expand_template()
+        template_code = self._expand_template({
+            "num-classes": len(class_labels),
+            "classes": class_labels
+        })
         if not isinstance(template_code, str):
             template_code = "\n".join(template_code)
-        template_code = template_code.replace("${num-classes}", str(len(class_labels)))
-        template_code = template_code.replace("${classes}", str(class_labels))
         template_file = os.path.join(self.job_dir, "data", "dataset.yaml")
         with open(template_file, "w") as tf:
             tf.write(template_code)

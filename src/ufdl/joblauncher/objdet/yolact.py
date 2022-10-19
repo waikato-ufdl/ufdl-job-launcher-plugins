@@ -96,9 +96,10 @@ class ObjectDetectionTrain_YOLACTPP_20200211(AbstractTrainJobExecutor):
                 mf.write(b)
 
         # replace parameters in template and save it to disk
-        template_code = self._expand_template()
-        template_code = template_code.replace("${labels}", "'" + "','".join(labels_str.split(",")) + "'")
-        template_code = template_code.replace("${num-labels}", str(len(labels_str.split(","))+1))
+        template_code = self._expand_template({
+            "labels": "'" + "','".join(labels_str.split(",")) + "'",
+            "num-labels": len(labels_str.split(",")) + 1
+        })
         template_file = self.job_dir + "/output/config.py"
         with open(template_file, "w") as tf:
             tf.write(template_code)

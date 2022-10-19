@@ -100,10 +100,9 @@ class ObjectDetectionTrain_TF_1_14(AbstractTrainJobExecutor):
                 break
 
         # replace parameters in template and save it to disk
-        template_code = self._expand_template()
+        template_code = self._expand_template({"num-classes": num_classes})
         if not isinstance(template_code, str):
             template_code = "\n".join(template_code)
-        template_code = template_code.replace("${num-classes}", str(num_classes))
         template_file = self.job_dir + "/output/pipeline.config"
         with open(template_file, "w") as tf:
             tf.write(template_code)
