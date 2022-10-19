@@ -37,6 +37,7 @@ setup(
     author_email='fracpete@waikato.ac.nz',
     install_requires=[
         "wai.annotations>=0.4.1",
+        "wai.annotations.core>=0.2.1",
         "ufdl.pythonclient",
         "ufdl.json-messages",
         "ufdl.joblauncher",
