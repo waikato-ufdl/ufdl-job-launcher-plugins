@@ -8,7 +8,7 @@ from typing import Tuple
 
 from ufdl.jobcontracts.standard import Train, Predict
 
-from ufdl.joblauncher.core.executors import AbstractTrainJobExecutor, AbstractPredictJobExecutor
+from ufdl.joblauncher.core.executors import AbstractTrainJobExecutor
 from ufdl.joblauncher.core.executors.descriptors import ExtraOutput, Parameter
 from ufdl.jobtypes.base import Boolean, Integer, String
 from ufdl.jobtypes.standard import Name, PK
