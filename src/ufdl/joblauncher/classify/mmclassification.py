@@ -190,18 +190,16 @@ class ImageClassificationPredict_MMClass_0_23_1(AbstractPredictJobExecutor):
             return False
 
         # create directories
-        # FIXME: Change back to 'prediction' (no 's') once backend template is fixed
-        self._mkdir(self.job_dir + "/predictions")
-        self._mkdir(self.job_dir + "/predictions/in")
-        self._mkdir(self.job_dir + "/predictions/out")
+        self._mkdir(self.job_dir + "/prediction")
+        self._mkdir(self.job_dir + "/prediction/in")
+        self._mkdir(self.job_dir + "/prediction/out")
         self._mkdir(self.job_dir + "/models")
 
         # dataset ID
         pk: int = self[self.contract.dataset].pk
 
         # download dataset
-        # FIXME: Change back to 'prediction' (no 's') once backend template is fixed
-        output_dir = self.job_dir + "/predictions/in"
+        output_dir = self.job_dir + "/prediction/in"
         self._download_dataset(pk, output_dir)
 
         # download model
@@ -257,16 +255,14 @@ class ImageClassificationPredict_MMClass_0_23_1(AbstractPredictJobExecutor):
         if do_run_success:
             self._compress_and_upload(
                 self.predictions,
-                # FIXME: Change back to 'prediction' (no 's') once backend template is fixed
-                glob(self.job_dir + "/predictions/out/*.json"),
+                glob(self.job_dir + "/prediction/out/*.json"),
                 self.job_dir + "/predictions.zip")
 
         # post-process predictions
         # FIXME: Copy-pasted from ../tensorflow.py, needs updating for MMClassification
         if do_run_success and self.store_predictions:
             try:
-                # FIXME: Change back to 'prediction' (no 's') once backend template is fixed
-                for f in glob(self.job_dir + "/predictions/out/*"):
+                for f in glob(self.job_dir + "/prediction/out/*"):
                     if f.endswith(".json"):
                         continue
                     img_name = os.path.basename(f)
