@@ -13,9 +13,7 @@ from ufdl.joblauncher.core.executors.parsers import CommandProgressParser
 from ufdl.joblauncher.core.types import Job, Template
 
 from ufdl.jobtypes.base import Integer, Boolean, String
-from ufdl.jobtypes.standard import Name, PK
-from ufdl.jobtypes.standard.container import Array
-from ufdl.jobtypes.standard.server import DockerImage, DockerImageInstance, Domain, Framework
+from ufdl.jobtypes.standard.server import DockerImage, Domain, Framework
 from ufdl.jobtypes.standard.util import BLOB
 from ufdl.pythonclient import UFDLServerContext
 
