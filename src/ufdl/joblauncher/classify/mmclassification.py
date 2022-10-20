@@ -189,9 +189,10 @@ class ImageClassificationPredict_MMClass_0_23_1(AbstractPredictJobExecutor):
             return False
 
         # create directories
-        self._mkdir(self.job_dir + "/prediction")
-        self._mkdir(self.job_dir + "/prediction/in")
-        self._mkdir(self.job_dir + "/prediction/out")
+        # FIXME: Change back to 'prediction' (no 's') once backend template is fixed
+        self._mkdir(self.job_dir + "/predictions")
+        self._mkdir(self.job_dir + "/predictions/in")
+        self._mkdir(self.job_dir + "/predictions/out")
         self._mkdir(self.job_dir + "/models")
 
         # dataset ID
