@@ -93,7 +93,7 @@ class ImageClassificationTrain_MMClass_0_23_1(AbstractTrainJobExecutor):
             if isinstance(config, str):
                 config_file.write(config)
             else:
-                config_file.writelines(config)
+                config_file.writelines(f"{line}\n" for line in config)
 
         return True
 
