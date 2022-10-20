@@ -150,14 +150,26 @@ class ObjectDetectionTrain_TF_1_14(AbstractTrainJobExecutor):
 
         if do_run_success:
             # export model
-            cmd = [
-                f"objdet_export",
-                f"--input_type image_tensor",
-                f"--pipeline_config_path /output/pipeline.config",
-                f"--trained_checkpoint_prefix /output/model.ckpt-{self.num_train_steps}",
-                f"--output_directory /output/exported_graphs"
+
+            image = self._docker_image['url']
+            volumes = [
+                self.job_dir + "/data" + ":/data",
+                self.job_dir + "/models" + ":/models",
+                self.job_dir + "/output" + ":/output",
             ]
-            proc = self._execute(cmd)
+
+            # build model
+            proc = self._run_image(
+                image,
+                volumes=volumes,
+                image_args=[
+                    f"objdet_export",
+                    f"--input_type image_tensor",
+                    f"--pipeline_config_path /output/pipeline.config",
+                    f"--trained_checkpoint_prefix /output/model.ckpt-{self.num_train_steps}",
+                    f"--output_directory /output/exported_graphs"
+                ]
+            )
 
             if proc.returncode == 0:
                 # zip+upload exported model
