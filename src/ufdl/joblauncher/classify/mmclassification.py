@@ -114,7 +114,7 @@ class ImageClassificationTrain_MMClass_0_23_1(AbstractTrainJobExecutor):
         # build model
         res = self._run_image(
             image,
-            docker_args=["-e", f"MMCLS_CLASSES={self.labels}"],
+            docker_args=["-e", f"MMCLS_CLASSES={','.join(self.labels)}"],
             volumes=volumes,
             image_args=[
                 "mmcls_train",
