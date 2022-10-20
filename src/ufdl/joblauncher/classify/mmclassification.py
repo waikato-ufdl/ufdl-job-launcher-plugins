@@ -278,7 +278,7 @@ class ImageClassificationPredict_MMClass_0_23_1(AbstractPredictJobExecutor):
                     label = max(
                         label_scores.items(),
                         default=(None,),
-                        key=lambda lbl, score: score
+                        key=lambda t: t[1]
                     )[0]
 
                     # set category for file
