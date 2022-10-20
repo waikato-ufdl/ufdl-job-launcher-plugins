@@ -36,8 +36,8 @@ setup(
     author='Peter Reutemann',
     author_email='fracpete@waikato.ac.nz',
     install_requires=[
-        "wai.annotations>=0.8.0",
-        "wai.annotations.core>=0.2.1",
+        "wai.annotations.roi==1.0.1",
+        "wai.annotations.core==0.2.1",
         "ufdl.pythonclient",
         "ufdl.json-messages",
         "ufdl.joblauncher",
