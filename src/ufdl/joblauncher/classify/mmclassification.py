@@ -26,7 +26,7 @@ from .core import calculate_confidence_scores, read_scores
 
 
 DOMAIN_TYPE = Domain("Image Classification")
-FRAMEWORK_TYPE = Framework((String, 'mmclass_0.23.1'))
+FRAMEWORK_TYPE = Framework((String(), 'mmclass_0.23.1'))
 IMAGE_CLASSIFICATION_MMCLASS_0_23_1_CONTRACT_TYPES = {'DomainType': DOMAIN_TYPE, 'FrameworkType': FRAMEWORK_TYPE}
 
 # The docker-image framework doesn't match the model framework
