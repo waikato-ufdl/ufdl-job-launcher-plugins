@@ -2,7 +2,7 @@ from glob import glob
 import os
 import shlex
 import traceback
-from typing import Tuple
+from typing import List, Tuple
 
 from ufdl.jobcontracts.standard import Train, Predict
 from ufdl.joblauncher.core.config import UFDLJobLauncherConfig
@@ -52,6 +52,8 @@ class ImageClassificationTrain_MMClass_0_23_1(AbstractTrainJobExecutor):
         # can work with many models.
         super().__init__(context, config, template, job, DOCKER_IMAGE_TYPE)
 
+        self.labels: List[str] = []
+
     def create_command_progress_parser(self) -> CommandProgressParser:
         """
         TODO: Implement.
@@ -83,10 +85,10 @@ class ImageClassificationTrain_MMClass_0_23_1(AbstractTrainJobExecutor):
 
         # Read in the labels
         with open(self.job_dir + "/data/labels.txt", "r") as labels_file:
-            labels = labels_file.read().split(',')
+            self.labels = labels_file.read().split(',')
 
         # Format the config file and write it to disk
-        config = self._expand_template({"num-classes": len(labels)})
+        config = self._expand_template({"num-classes": len(self.labels)})
         with open(self.job_dir + "/output/config.py", "w") as config_file:
             if isinstance(config, str):
                 config_file.write(config)
@@ -112,6 +114,7 @@ class ImageClassificationTrain_MMClass_0_23_1(AbstractTrainJobExecutor):
         # build model
         res = self._run_image(
             image,
+            docker_args=["-e", f"MMCLS_CLASSES={self.labels}"],
             volumes=volumes,
             image_args=[
                 "mmcls_train",
