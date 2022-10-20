@@ -221,8 +221,7 @@ class ImageClassificationPredict_MMClass_0_23_1(AbstractPredictJobExecutor):
 
         image: str = self.docker_image['url']
         volumes = [
-            self.job_dir + "/prediction" + ":/prediction",
-            self.job_dir + "/output" + ":/output",
+            self.job_dir + ":/workspace"
         ]
 
         # Read in the list of labels
