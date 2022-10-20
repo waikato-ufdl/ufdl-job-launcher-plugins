@@ -199,7 +199,7 @@ class ImageClassificationPredict_MMClass_0_23_1(AbstractPredictJobExecutor):
         pk: int = self[self.contract.dataset].pk
 
         # download dataset
-        output_dir = self.job_dir + "/prediction/in"
+        output_dir = self.job_dir + "/predictions/in"
         self._download_dataset(pk, output_dir)
 
         # download model
