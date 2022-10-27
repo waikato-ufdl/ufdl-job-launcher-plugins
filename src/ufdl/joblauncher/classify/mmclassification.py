@@ -3,7 +3,7 @@ from glob import glob
 import os
 import shlex
 import traceback
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 from ufdl.jobcontracts.standard import Train, Predict
 from ufdl.joblauncher.core.config import UFDLJobLauncherConfig
@@ -14,8 +14,9 @@ from ufdl.joblauncher.core.executors.parsers import CommandProgressParser
 from ufdl.joblauncher.core.types import Job, Template
 
 from ufdl.jobtypes.base import Integer, Boolean, String
-from ufdl.jobtypes.standard.server import DockerImage, Domain, Framework
-from ufdl.jobtypes.standard.util import BLOB
+from ufdl.jobtypes.standard import Name, PK
+from ufdl.jobtypes.standard.server import DockerImage, Domain, Framework, PretrainedModel, PretrainedModelInstance
+from ufdl.jobtypes.standard.util import BLOB, Nothing
 from ufdl.pythonclient import UFDLServerContext
 
 from ufdl.pythonclient.functional.image_classification.dataset import add_categories
@@ -53,6 +54,18 @@ class ImageClassificationTrain_MMClass_0_23_1(AbstractTrainJobExecutor):
         # can work with many models.
         super().__init__(context, config, template, job, DOCKER_IMAGE_TYPE)
 
+        # Need to dynamically assign the pretrained model, as its framework type
+        # depends on the specifc framework type we are implementing, not the
+        # base type
+        model_framework = self._extract_docker_image_type_from_contract(self._contract).type_args[1]
+        self.pretrained_model: Optional[PretrainedModelInstance] = Parameter(
+            PK(PretrainedModel(DOMAIN_TYPE, model_framework)),
+            Name(PretrainedModel(DOMAIN_TYPE, model_framework)),
+            PretrainedModel(DOMAIN_TYPE, model_framework),
+            Nothing(),
+            default=None
+        )
+
         self.labels: List[str] = []
 
     def create_command_progress_parser(self) -> CommandProgressParser:
@@ -89,7 +102,17 @@ class ImageClassificationTrain_MMClass_0_23_1(AbstractTrainJobExecutor):
             self.labels = labels_file.read().split(',')
 
         # Format the config file and write it to disk
-        config = self._expand_template({"num-classes": len(self.labels)})
+        config = self._expand_template({
+            "num-classes": len(self.labels),
+            "pretrained_model_config": (
+                ""
+                if self.pretrained_model is None else
+                f"init_cfg=dict("
+                f"type='Pretrained',"
+                f"checkpoint='{self.pretrained_model.url}',"
+                f"prefix='backbone'),"
+            )
+        })
         with open(self.job_dir + "/output/config.py", "w") as config_file:
             if isinstance(config, str):
                 config_file.write(config)
