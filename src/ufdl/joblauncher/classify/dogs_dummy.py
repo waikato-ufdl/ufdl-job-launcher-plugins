@@ -30,7 +30,7 @@ FRAMEWORK_TYPE = Framework("dogs_dummy", "1")
 IMAGE_CLASSIFICATION_DOGS_DUMMY_1_CONTRACT_TYPES = {'DomainType': DOMAIN_TYPE, 'FrameworkType': FRAMEWORK_TYPE}
 
 # Don't care what docker image we select
-DOCKER_IMAGE_TYPE = DockerImage((String(), String()))
+DOCKER_IMAGE_TYPE = DockerImage(DOMAIN_TYPE, Framework((String(), String())))
 
 
 class ImageClassificationTrain_DogsDummy_1(AbstractTrainJobExecutor):
