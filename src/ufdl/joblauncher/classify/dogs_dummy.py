@@ -224,14 +224,17 @@ class ImageClassificationPredict_DogsDummy_1(AbstractPredictJobExecutor):
         files_to_get_wrong = (
             set(
                 itertools.chain(
-                    *self.files_to_get_wrong(
-                        [
-                            file
-                            for file, label in files_with_correct_labels.items()
-                            if label == next_label
-                        ],
-                        accuracy
-                    ) for next_label in ALL_LABELS
+                    *(
+                        self.files_to_get_wrong(
+                            [
+                                file
+                                for file, label in files_with_correct_labels.items()
+                                if label == next_label
+                            ],
+                            accuracy
+                        )
+                        for next_label in ALL_LABELS
+                    )
                 )
             )
             if self.per_class else
