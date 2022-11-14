@@ -3,21 +3,18 @@ import random
 from glob import glob
 import os
 import traceback
-from typing import List, Set, Tuple
+from typing import List, Set
 
 from ufdl.jobcontracts.standard import Train, Predict
-from ufdl.joblauncher.core.config import UFDLJobLauncherConfig
 
-from ufdl.joblauncher.core.executors import AbstractTrainJobExecutor, AbstractPredictJobExecutor
+from ufdl.joblauncher.core.executors import AbstractJobExecutor
+from ufdl.joblauncher.core.executors._util import download_dataset
 from ufdl.joblauncher.core.executors.descriptors import Parameter, ExtraOutput
-from ufdl.joblauncher.core.executors.parsers import CommandProgressParser
-from ufdl.joblauncher.core.types import Job, Template
 
 from ufdl.jobtypes.base import Integer, Boolean, String
 from ufdl.jobtypes.standard.server import DockerImage, Domain, Framework
 from ufdl.jobtypes.standard.util import BLOB
 
-from ufdl.pythonclient import UFDLServerContext
 from ufdl.pythonclient.functional.image_classification.dataset import add_categories
 
 from wai.common.math.sets import subset_number_to_subset, number_of_subsets
@@ -33,33 +30,13 @@ IMAGE_CLASSIFICATION_DOGS_DUMMY_1_CONTRACT_TYPES = {'DomainType': DOMAIN_TYPE, '
 DOCKER_IMAGE_TYPE = DockerImage(DOMAIN_TYPE, Framework((String(), String())))
 
 
-class ImageClassificationTrain_DogsDummy_1(AbstractTrainJobExecutor):
+class ImageClassificationTrain_DogsDummy_1(AbstractJobExecutor[Train]):
     """
     Trial dummy learner for the dog-breeds dataset.
     """
     _cls_contract = Train(IMAGE_CLASSIFICATION_DOGS_DUMMY_1_CONTRACT_TYPES)
 
     factor: int = Parameter(Integer())
-
-    def __init__(
-            self,
-            context: UFDLServerContext,
-            config: UFDLJobLauncherConfig,
-            template: Template,
-            job: Job
-    ):
-        # Need to override the default docker-image type,
-        # as we don't care what Docker image we select
-        super().__init__(context, config, template, job, DOCKER_IMAGE_TYPE)
-
-    def create_command_progress_parser(self) -> CommandProgressParser:
-        """
-        TODO: Implement.
-        """
-        def parser(cmd_output: str, last_progress: float) -> Tuple[float, None]:
-            return last_progress, None
-
-        return CommandProgressParser.from_callable(parser)
 
     def _pre_run(self):
         """
@@ -75,9 +52,13 @@ class ImageClassificationTrain_DogsDummy_1(AbstractTrainJobExecutor):
         self._mkdir(self.job_dir + "/data")
 
         # download dataset
-        pk: int = self[self.contract.dataset].pk
-        output_dir = self.job_dir + "/data"
-        self._download_dataset(pk, output_dir)
+        download_dataset(
+            self.context,
+            self[self.contract.dataset].pk,
+            self.template['domain'],
+            self.job_dir + "/data",
+            ["to-subdir-ic", "-o", "."]
+        )
 
         self.progress(0.1, comment="Downloaded dataset")
 
@@ -133,7 +114,7 @@ class ImageClassificationTrain_DogsDummy_1(AbstractTrainJobExecutor):
         super()._post_run(pre_run_success, do_run_success, error)
 
 
-class ImageClassificationPredict_DogsDummy_1(AbstractPredictJobExecutor):
+class ImageClassificationPredict_DogsDummy_1(AbstractJobExecutor[Predict]):
     """
     Trial dummy predictor for the dog-breeds dataset.
     """
@@ -144,17 +125,6 @@ class ImageClassificationPredict_DogsDummy_1(AbstractPredictJobExecutor):
     store_predictions: bool = Parameter(Boolean())
 
     predictions = ExtraOutput(BLOB("txt"))
-
-    def __init__(
-            self,
-            context: UFDLServerContext,
-            config: UFDLJobLauncherConfig,
-            template: Template,
-            job: Job
-    ):
-        # Need to override the default docker-image type,
-        # as we don't care what Docker image we select
-        super().__init__(context, config, template, job, DOCKER_IMAGE_TYPE)
 
     def _pre_run(self):
         """
@@ -171,12 +141,15 @@ class ImageClassificationPredict_DogsDummy_1(AbstractPredictJobExecutor):
         self._mkdir(self.job_dir + "/prediction/in")
         self._mkdir(self.job_dir + "/prediction/out")
 
-        # dataset ID
-        pk: int = self[self.contract.dataset].pk
-
         # download dataset
-        output_dir = self.job_dir + "/prediction/in"
-        self._download_dataset(pk, output_dir)
+        download_dataset(
+            self.context,
+            self[self.contract.dataset].pk,
+            self.template['domain'],
+            self.job_dir + "/prediction/in",
+            ["to-images-ic"],
+            True
+        )
 
         # download model
         model = self.job_dir + "/model.zip"
@@ -186,7 +159,7 @@ class ImageClassificationPredict_DogsDummy_1(AbstractPredictJobExecutor):
         # decompress model
         msg = self._decompress(model, self.job_dir)
         if msg is not None:
-            raise Exception("Failed to extract model pk=%d!\n%s" % (pk, msg))
+            raise Exception(f"Failed to extract model!\n{msg}")
 
         return True
 
@@ -221,8 +194,8 @@ class ImageClassificationPredict_DogsDummy_1(AbstractPredictJobExecutor):
             accuracy = float(model_file.read())
 
         # Work out which files to get wrong
-        files_to_get_wrong = (
-            set(
+        if self.per_class:
+            files_to_get_wrong = set(
                 itertools.chain(
                     *(
                         self.files_to_get_wrong(
@@ -237,8 +210,8 @@ class ImageClassificationPredict_DogsDummy_1(AbstractPredictJobExecutor):
                     )
                 )
             )
-            if self.per_class else
-            self.files_to_get_wrong(
+        else:
+            files_to_get_wrong = self.files_to_get_wrong(
                 [
                     file
                     for file, label in files_with_correct_labels.items()
@@ -246,14 +219,12 @@ class ImageClassificationPredict_DogsDummy_1(AbstractPredictJobExecutor):
                 ],
                 accuracy
             )
-        )
 
         # Modify the labels of those we are getting wrong
         files_with_modified_labels = {
             filename: (
-                correct_label
-                if filename not in files_to_get_wrong else
-                self.get_random_subset(
+                correct_label if filename not in files_to_get_wrong
+                else self.get_random_subset(
                     [label for label in ALL_LABELS if label != correct_label],
                     1
                 )[0]
