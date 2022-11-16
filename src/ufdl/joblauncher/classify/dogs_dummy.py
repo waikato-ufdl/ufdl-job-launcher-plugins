@@ -3,6 +3,7 @@ import random
 from glob import glob
 import os
 import traceback
+from time import sleep
 from typing import List, Set
 
 from ufdl.jobcontracts.standard import Train, Predict
@@ -11,7 +12,7 @@ from ufdl.joblauncher.core.executors import AbstractJobExecutor
 from ufdl.joblauncher.core.executors._util import download_dataset
 from ufdl.joblauncher.core.executors.descriptors import Parameter, ExtraOutput
 
-from ufdl.jobtypes.base import Integer, Boolean, String
+from ufdl.jobtypes.base import Float, Integer, Boolean, String
 from ufdl.jobtypes.standard.server import DockerImage, Domain, Framework
 from ufdl.jobtypes.standard.util import BLOB
 
@@ -37,6 +38,8 @@ class ImageClassificationTrain_DogsDummy_1(AbstractJobExecutor[Train]):
     _cls_contract = Train(IMAGE_CLASSIFICATION_DOGS_DUMMY_1_CONTRACT_TYPES)
 
     factor: int = Parameter(Integer())
+
+    delay: float = Parameter(Float())
 
     def _pre_run(self):
         """
@@ -83,6 +86,7 @@ class ImageClassificationTrain_DogsDummy_1(AbstractJobExecutor[Train]):
                 score += 1
             index += 1
             self.progress(0.1 + 0.8 * (index / len(files_with_labels)))
+            sleep(self.delay)
 
         # Write the score to disk as an accuracy percentage, weighted by the factor parameter
         with open(self.job_dir + "/model", "w") as model_file:
