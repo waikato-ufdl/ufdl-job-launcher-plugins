@@ -86,7 +86,8 @@ class ImageClassificationTrain_DogsDummy_1(AbstractJobExecutor[Train]):
                 score += 1
             index += 1
             self.progress(0.1 + 0.8 * (index / len(files_with_labels)))
-            sleep(self.delay)
+            if self.delay > 0.0:
+                sleep(self.delay)
 
         # Write the score to disk as an accuracy percentage, weighted by the factor parameter
         with open(self.job_dir + "/model", "w") as model_file:
