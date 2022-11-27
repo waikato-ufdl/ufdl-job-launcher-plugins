@@ -7,18 +7,22 @@ from time import sleep
 from typing import List, Set
 
 from ufdl.jobcontracts.standard import Train, Predict
+from ufdl.joblauncher.core.config import UFDLJobLauncherConfig
 
 from ufdl.joblauncher.core.executors import AbstractJobExecutor
 from ufdl.joblauncher.core.executors._util import download_dataset
 from ufdl.joblauncher.core.executors.descriptors import Parameter, ExtraOutput
+from ufdl.joblauncher.core.types import Job, Template
 
 from ufdl.jobtypes.base import Float, Integer, Boolean, String
 from ufdl.jobtypes.standard.server import DockerImage, Domain, Framework
-from ufdl.jobtypes.standard.util import BLOB
+from ufdl.jobtypes.standard.util import BLOB, JSON
+from ufdl.pythonclient import UFDLServerContext
 
 from ufdl.pythonclient.functional.image_classification.dataset import add_categories
 
 from wai.common.math.sets import subset_number_to_subset, number_of_subsets
+from wai.json.raw import RawJSONElement, RawJSONObject
 
 from ..utils import write_to_file
 
@@ -40,6 +44,23 @@ class ImageClassificationTrain_DogsDummy_1(AbstractJobExecutor[Train]):
     factor: int = Parameter(Integer())
 
     delay: float = Parameter(Float())
+
+    frontend_metadata: RawJSONElement = Parameter(JSON())
+
+    metadata = ExtraOutput(JSON())
+
+    def __init__(
+            self,
+            context: UFDLServerContext,
+            config: UFDLJobLauncherConfig,
+            template: Template,
+            job: Job
+    ):
+        super().__init__(context, config, template, job)
+
+        self._metadata: RawJSONObject = {
+            "frontend": self.frontend_metadata
+        }
 
     def _pre_run(self):
         """
@@ -81,17 +102,31 @@ class ImageClassificationTrain_DogsDummy_1(AbstractJobExecutor[Train]):
         # Calculate the number of correctly labelled images
         score = 0
         index = 0
+        input_files_metadata = {}
         for file, label in files_with_labels.items():
-            if CORRECT_LABELS.get(file) == label:
+            correct_label = CORRECT_LABELS.get(file)
+            correct = correct_label == label
+            if correct:
                 score += 1
             index += 1
             self.progress(0.1 + 0.8 * (index / len(files_with_labels)))
+            input_files_metadata[file] = {"label": label, "correct_label": correct_label, "correct": correct}
             if self.delay > 0.0:
                 sleep(self.delay)
 
         # Write the score to disk as an accuracy percentage, weighted by the factor parameter
+        accuracy = min(1.0, score / self.factor)
+        input_files_metadata["accuracy"] = accuracy
         with open(self.job_dir + "/model", "w") as model_file:
-            model_file.write(str(min(1.0, score / self.factor)))
+            model_file.write(str(accuracy))
+
+        self._metadata["job"] = {
+            "num_files": len(files_with_labels),
+            "factor": self.factor,
+            "score":  score,
+            "files": input_files_metadata,
+            "accuracy": accuracy
+        }
 
         self.progress(0.9, comment="Analysed dataset")
 
@@ -116,6 +151,9 @@ class ImageClassificationTrain_DogsDummy_1(AbstractJobExecutor[Train]):
                 self.job_dir + "/model.zip"
             )
 
+        # Upload metadata
+        self.metadata = self._metadata
+
         super()._post_run(pre_run_success, do_run_success, error)
 
 
@@ -130,6 +168,23 @@ class ImageClassificationPredict_DogsDummy_1(AbstractJobExecutor[Predict]):
     store_predictions: bool = Parameter(Boolean())
 
     predictions = ExtraOutput(BLOB("txt"))
+
+    frontend_metadata: RawJSONElement = Parameter(JSON())
+
+    metadata = ExtraOutput(JSON())
+
+    def __init__(
+            self,
+            context: UFDLServerContext,
+            config: UFDLJobLauncherConfig,
+            template: Template,
+            job: Job
+    ):
+        super().__init__(context, config, template, job)
+
+        self._metadata: RawJSONObject = {
+            "frontend": self.frontend_metadata
+        }
 
     def _pre_run(self):
         """
@@ -251,11 +306,30 @@ class ImageClassificationPredict_DogsDummy_1(AbstractJobExecutor[Predict]):
 
         # Write the labels to the output directory
         num_written = 0
+        num_correct = 0
+        files_metadata = {}
         for filename, predicted_label in files_with_modified_labels.items():
             with open(self.job_dir + f"/prediction/out/{os.path.splitext(filename)[0]}.txt", "w") as prediction_file:
                 prediction_file.write(predicted_label if predicted_label is not None else "")
+            correct_label = files_with_correct_labels[filename]
+            correct = correct_label == predicted_label
+            if correct:
+                num_correct += 1
             num_written += 1
+            files_metadata[filename] = {
+                "predicted_label": predicted_label,
+                "correct_label": correct_label,
+                "correct": correct
+            }
             self.progress(0.4 + 0.5 * (num_written / len(files_with_modified_labels)))
+
+        self._metadata["job"] = {
+            "accuracy": accuracy,
+            "num_files": len(files_with_correct_labels),
+            "per_class": self.per_class,
+            "files": files_metadata,
+            "num_correct": num_correct
+        }
 
     def _post_run(self, pre_run_success, do_run_success, error):
         """
@@ -300,8 +374,10 @@ class ImageClassificationPredict_DogsDummy_1(AbstractJobExecutor[Predict]):
             except:
                 self.log_msg("Failed to post-process predictions generated by job %d for dataset %d!\n%s" % (self.job_pk, dataset_pk, traceback.format_exc()))
 
-        self.progress(1.0, comment="Uploaded predictions to server")
+        # Upload metadata
+        self.metadata = self._metadata
 
+        self.progress(1.0, comment="Uploaded predictions to server")
 
         super()._post_run(pre_run_success, do_run_success, error)
 
