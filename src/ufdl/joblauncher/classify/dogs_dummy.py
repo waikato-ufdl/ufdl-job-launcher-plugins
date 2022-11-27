@@ -121,6 +121,7 @@ class ImageClassificationTrain_DogsDummy_1(AbstractJobExecutor[Train]):
             model_file.write(str(accuracy))
 
         self._metadata["job"] = {
+            "executor": "train",
             "num_files": len(files_with_labels),
             "factor": self.factor,
             "score":  score,
@@ -324,6 +325,7 @@ class ImageClassificationPredict_DogsDummy_1(AbstractJobExecutor[Predict]):
             self.progress(0.4 + 0.5 * (num_written / len(files_with_modified_labels)))
 
         self._metadata["job"] = {
+            "executor": "predict",
             "accuracy": accuracy,
             "num_files": len(files_with_correct_labels),
             "per_class": self.per_class,
