@@ -115,10 +115,9 @@ class ImageClassificationTrain_DogsDummy_1(AbstractJobExecutor[Train]):
                 sleep(self.delay)
 
         # Write the score to disk as an accuracy percentage, weighted by the factor parameter
-        accuracy = min(1.0, score / self.factor)
-        input_files_metadata["accuracy"] = accuracy
+        model = min(1.0, score / self.factor)
         with open(self.job_dir + "/model", "w") as model_file:
-            model_file.write(str(accuracy))
+            model_file.write(str(model))
 
         self._metadata["job"] = {
             "executor": "train",
@@ -126,7 +125,8 @@ class ImageClassificationTrain_DogsDummy_1(AbstractJobExecutor[Train]):
             "factor": self.factor,
             "score":  score,
             "files": input_files_metadata,
-            "accuracy": accuracy
+            "accuracy": score / len(files_with_labels),
+            "model": model
         }
 
         self.progress(0.9, comment="Analysed dataset")
@@ -260,7 +260,7 @@ class ImageClassificationPredict_DogsDummy_1(AbstractJobExecutor[Predict]):
 
         # Read the "trained" accuracy in from the model file
         with open(self.job_dir + "/model", "r") as model_file:
-            accuracy = float(model_file.read())
+            model = float(model_file.read())
 
         self.progress(0.25, comment="Loaded model")
 
@@ -275,7 +275,7 @@ class ImageClassificationPredict_DogsDummy_1(AbstractJobExecutor[Predict]):
                                 for file, label in files_with_correct_labels.items()
                                 if label == next_label
                             ],
-                            accuracy
+                            model
                         )
                         for next_label in ALL_LABELS
                     )
@@ -288,7 +288,7 @@ class ImageClassificationPredict_DogsDummy_1(AbstractJobExecutor[Predict]):
                     for file, label in files_with_correct_labels.items()
                     if label is not None
                 ],
-                accuracy
+                model
             )
 
         # Modify the labels of those we are getting wrong
@@ -326,11 +326,12 @@ class ImageClassificationPredict_DogsDummy_1(AbstractJobExecutor[Predict]):
 
         self._metadata["job"] = {
             "executor": "predict",
-            "accuracy": accuracy,
+            "model": model,
             "num_files": len(files_with_correct_labels),
             "per_class": self.per_class,
             "files": files_metadata,
-            "num_correct": num_correct
+            "num_correct": num_correct,
+            "accuracy": num_correct / len(files_with_correct_labels)
         }
 
     def _post_run(self, pre_run_success, do_run_success, error):
