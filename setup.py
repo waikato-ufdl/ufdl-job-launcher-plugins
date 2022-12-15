@@ -37,11 +37,13 @@ setup(
     author_email='fracpete@waikato.ac.nz',
     install_requires=[
         "wai.annotations.roi==1.0.1",
-        "wai.annotations.core==0.2.1",
+        "wai.annotations.core==0.2.2",
         "ufdl.pythonclient",
         "ufdl.json-messages",
         "ufdl.joblauncher",
         "ufdl.jobtypes",
-        "ufdl.jobcontracts"
+        "ufdl.jobcontracts",
+        "python-javabridge",
+        "python-weka-wrapper3"
     ],
 )
