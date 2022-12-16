@@ -38,7 +38,7 @@ setup(
     install_requires=[
         "wai.annotations.roi==1.0.1",
         "wai.annotations.core==0.2.2",
-        "wai.annotations.subdir==2.0.0",
+        "wai.annotations.subdir==2.0.1",
         "ufdl.pythonclient",
         "ufdl.json-messages",
         "ufdl.joblauncher",
