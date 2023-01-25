@@ -43,8 +43,6 @@ setup(
         "ufdl.json-messages",
         "ufdl.joblauncher",
         "ufdl.jobtypes",
-        "ufdl.jobcontracts",
-        "python-javabridge",
-        "python-weka-wrapper3"
+        "ufdl.jobcontracts"
     ],
 )
