@@ -84,7 +84,9 @@ class AbstractImageClassificationTrainMMClass(AbstractTrainJobExecutor):
                 if "]" in s:
                     s = s[0:s.index("]")]
                     try:
-                        return float(s) / self.epochs, None
+                        perc = float(s) / self.epochs
+                        # Train command represents only 70% of the overall job execution
+                        return perc * 0.7 + 0.2, None
                     except:
                         pass
             return last_progress, None
