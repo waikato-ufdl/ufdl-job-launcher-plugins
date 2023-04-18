@@ -74,9 +74,19 @@ class AbstractImageClassificationTrainMMClass(AbstractTrainJobExecutor):
 
     def create_command_progress_parser(self) -> CommandProgressParser:
         """
-        TODO: Implement.
+        Looks for the epoch in the output.
         """
         def parser(cmd_output: str, last_progress: float) -> Tuple[float, None]:
+            if " - mmcls - INFO - Epoch(val) [" in cmd_output:
+                s = cmd_output
+                f = "Epoch(val) ["
+                s = s[s.index(f) + len(f):]
+                if "]" in s:
+                    s = s[0:s.index("]")]
+                    try:
+                        return float(s) / self.epochs, None
+                    except:
+                        pass
             return last_progress, None
 
         return CommandProgressParser.from_callable(parser)
