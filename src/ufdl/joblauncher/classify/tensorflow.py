@@ -274,6 +274,9 @@ class ImageClassificationPredict_TF_1_14(AbstractPredictJobExecutor):
             self.job_dir + "/output" + ":/output",
         ]
 
+        # log the input files
+        self.log_msg("prediction/in files: " + str(sorted(os.listdir(self.job_dir + "/prediction/in"))))
+
         # build model
         image_args = self._expand_template()
         self._run_image(
@@ -297,6 +300,8 @@ class ImageClassificationPredict_TF_1_14(AbstractPredictJobExecutor):
 
         # zip+upload predictions
         if do_run_success:
+            # log the ouput files
+            self.log_msg("prediction/out files: " + str(sorted(os.listdir(self.job_dir + "/prediction/out"))))
             self._compress_and_upload(
                 self.predictions,
                 glob(self.job_dir + "/prediction/out/*.csv"),
