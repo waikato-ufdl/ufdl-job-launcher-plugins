@@ -165,7 +165,8 @@ class ImageClassificationTrain_TF_1_14(AbstractTrainJobExecutor):
                 [
                     self.job_dir + "/output/graph.pb",
                     self.job_dir + "/output/labels.txt",
-                    self.job_dir + "/output/info.json"
+                    self.job_dir + "/output/info.json",
+                    self.job_dir + "/output/saved_model/model.tflite",
                 ],
                 self.job_dir + "/model.zip"
             )
