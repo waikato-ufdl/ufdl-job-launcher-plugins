@@ -54,10 +54,6 @@ def calculate_confidence_scores(
     for c in confidence_score_classes:
         try:
             cls = load_class(c)
-            if not issubclass(cls, AbstractConfidenceScore):
-                #executor.log_msg(f"Confidence score class '{c}' does not sub-class {AbstractConfidenceScore.__qualname__}")
-                executor.log_msg(f"Confidence score class '{c}' -> '{str(cls)}' does not sub-class {str(AbstractConfidenceScore)}")
-                continue
             conf_score_obj.append(cls())
         except:
             executor.log_msg(
