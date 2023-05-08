@@ -27,15 +27,14 @@ from .core import calculate_confidence_scores, read_scores
 
 DOMAIN_TYPE = Domain("Image Classification")
 
-FRAMEWORK_TYPE_0_23_1 = Framework((String(), String.generate_subclass('mmclass_0.23.1')()))
-FRAMEWORK_TYPE_0_25_0 = Framework((String(), String.generate_subclass('mmclass_0.25.0')()))
+FRAMEWORK_TYPE_0_23_1 = Framework('mmclassification', '0.23.1')
+FRAMEWORK_TYPE_0_25_0 = Framework('mmclassification', '0.25.0')
 
 IMAGE_CLASSIFICATION_MMCLASS_0_23_1_CONTRACT_TYPES = {'DomainType': DOMAIN_TYPE, 'FrameworkType': FRAMEWORK_TYPE_0_23_1}
 IMAGE_CLASSIFICATION_MMCLASS_0_25_0_CONTRACT_TYPES = {'DomainType': DOMAIN_TYPE, 'FrameworkType': FRAMEWORK_TYPE_0_25_0}
 
-# The docker-image framework doesn't match the model framework
-DOCKER_IMAGE_TYPE_0_23_1 = DockerImage(DOMAIN_TYPE, Framework('mmclass', '0.23.1'))
-DOCKER_IMAGE_TYPE_0_25_0 = DockerImage(DOMAIN_TYPE, Framework('mmclass', '0.25.0'))
+DOCKER_IMAGE_TYPE_0_23_1 = DockerImage(DOMAIN_TYPE, FRAMEWORK_TYPE_0_23_1)
+DOCKER_IMAGE_TYPE_0_25_0 = DockerImage(DOMAIN_TYPE, FRAMEWORK_TYPE_0_25_0)
 
 
 class AbstractImageClassificationTrainMMClass(AbstractTrainJobExecutor):
