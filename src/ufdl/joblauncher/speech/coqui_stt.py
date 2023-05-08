@@ -26,20 +26,17 @@ from .core import store_transcription
 
 
 DOMAIN_TYPE = Domain("Speech")
-FRAMEWORK_TYPE = Framework("coqui_stt", "1")
-SPEECH_COQUI_STT_CONTRACT_TYPES = {'DomainType': DOMAIN_TYPE, 'FrameworkType': FRAMEWORK_TYPE}
+FRAMEWORK_TYPE_1_3_0 = Framework("coqui_stt", "1.3.0")
+FRAMEWORK_TYPE_1_4_0 = Framework("coqui_stt", "1.4.0")
+SPEECH_COQUI_STT_CONTRACT_TYPES_1_3_0 = {'DomainType': DOMAIN_TYPE, 'FrameworkType': FRAMEWORK_TYPE_1_3_0}
+SPEECH_COQUI_STT_CONTRACT_TYPES_1_4_0 = {'DomainType': DOMAIN_TYPE, 'FrameworkType': FRAMEWORK_TYPE_1_4_0}
 
 
-class SpeechTrain_Coqui_STT(AbstractTrainJobExecutor):
+class AbstractSpeechTrain_Coqui_STT(AbstractTrainJobExecutor):
     """
     For executing Coqui STT speech training jobs.
     """
-    _cls_contract = Train(SPEECH_COQUI_STT_CONTRACT_TYPES)
-
-    pretrained_model: PretrainedModelInstance = Parameter(
-        PK(PretrainedModel(DOMAIN_TYPE, FRAMEWORK_TYPE)),
-        Name(PretrainedModel(DOMAIN_TYPE, FRAMEWORK_TYPE))
-    )
+    pretrained_model: PretrainedModelInstance
 
     epochs: int = Parameter(
         Integer()
@@ -156,12 +153,34 @@ class SpeechTrain_Coqui_STT(AbstractTrainJobExecutor):
         super()._post_run(pre_run_success, do_run_success, error)
 
 
-class SpeechPredict_Coqui_STT(AbstractPredictJobExecutor):
+class SpeechTrain_Coqui_STT_1_3_0(AbstractSpeechTrain_Coqui_STT):
+    """
+    For executing Coqui STT speech training jobs.
+    """
+    _cls_contract = Train(SPEECH_COQUI_STT_CONTRACT_TYPES_1_3_0)
+
+    pretrained_model: PretrainedModelInstance = Parameter(
+        PK(PretrainedModel(DOMAIN_TYPE, FRAMEWORK_TYPE_1_3_0)),
+        Name(PretrainedModel(DOMAIN_TYPE, FRAMEWORK_TYPE_1_3_0))
+    )
+
+
+class SpeechTrain_Coqui_STT_1_4_0(AbstractSpeechTrain_Coqui_STT):
+    """
+    For executing Coqui STT speech training jobs.
+    """
+    _cls_contract = Train(SPEECH_COQUI_STT_CONTRACT_TYPES_1_4_0)
+
+    pretrained_model: PretrainedModelInstance = Parameter(
+        PK(PretrainedModel(DOMAIN_TYPE, FRAMEWORK_TYPE_1_4_0)),
+        Name(PretrainedModel(DOMAIN_TYPE, FRAMEWORK_TYPE_1_4_0))
+    )
+
+
+class AbstractSpeechPredict_Coqui_STT(AbstractPredictJobExecutor):
     """
     For executing Coqui STT speech prediction jobs.
     """
-    _cls_contract = Predict(SPEECH_COQUI_STT_CONTRACT_TYPES)
-
     store_predictions: bool = Parameter(Boolean())
     confidence_scores: Tuple[str, ...] = Parameter(Array(String()))
 
@@ -261,6 +280,20 @@ class SpeechPredict_Coqui_STT(AbstractPredictJobExecutor):
                 )
 
         super()._post_run(pre_run_success, do_run_success, error)
+
+
+class SpeechPredict_Coqui_STT_1_3_0(AbstractSpeechPredict_Coqui_STT):
+    """
+    For executing Coqui STT speech prediction jobs.
+    """
+    _cls_contract = Predict(SPEECH_COQUI_STT_CONTRACT_TYPES_1_3_0)
+
+
+class SpeechPredict_Coqui_STT_1_4_0(AbstractSpeechPredict_Coqui_STT):
+    """
+    For executing Coqui STT speech prediction jobs.
+    """
+    _cls_contract = Predict(SPEECH_COQUI_STT_CONTRACT_TYPES_1_4_0)
 
 
 # Regex for parsing the progress command output
