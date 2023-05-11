@@ -254,6 +254,7 @@ class ObjectDetectionTrain_Yolo_v7(AbstractTrainJobExecutor):
         self.progress(0.2, comment="Generating training template...")
         template_code = self._expand_template({
             "num-classes": len(self.class_labels),
+            "classes": self.class_labels
         })
         if not isinstance(template_code, str):
             template_code = "\n".join(template_code)
