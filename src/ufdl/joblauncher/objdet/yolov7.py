@@ -303,39 +303,13 @@ class ObjectDetectionTrain_Yolo_v7(AbstractTrainJobExecutor):
             error: Optional[str]
     ):
         if do_run_success:
-            self.progress(0.9, comment="Exporting model as ONNX...")
-
-            # export model
-            self._fail_on_error(
-                self._run_image(
-                    self.docker_image.url,
-                    docker_args=["--shm-size", "8G"],
-                    volumes=[
-                        self.job_dir + "/data" + ":/data",
-                        self.job_dir + "/models" + ":/models",
-                        self.job_dir + "/output" + ":/output",
-                    ],
-                    image_args=[
-                        f"yolov7_export",
-                        f"--weights", "/output/job-number-{self.job_pk}/weights/best.pt",
-                        "--grid",
-                        "--end2end",
-                        "--simplify",
-                        "--topk-all", str(len(self.class_labels)),
-                        f"--img-size", str(self.image_size), str(self.image_size),
-                        f"--max-wh", str(self.image_size),
-                    ]
-                )
-            )
-
-            self.progress(0.95, comment="Uploading model...")
+            self.progress(0.90, comment="Uploading model...")
 
             # zip+upload exported model
             zipfile = self.job_dir + "/model.zip"
             self._compress(
                 [
                     f"{self.job_dir}/output/job-number-{self.job_pk}/weights/best.pt",
-                    f"{self.job_dir}/output/job-number-{self.job_pk}/weights/best.onnx",
                     f"{self.job_dir}/data/labels.csv"
                 ],
                 zipfile,
